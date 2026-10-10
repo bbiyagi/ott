@@ -5,16 +5,29 @@ import { TODAY, fmt, parse } from './date'
 export type HotMode = 'soon' | 'now'
 
 export const home = ref<HomeData | null>(null)
+/** empty = 서버는 있지만 아직 모은 정보가 없음(503), error = 서버에 닿지 못함 */
+export const loadError = ref<'' | 'empty' | 'error'>('')
 
 export async function loadHome() {
   try {
     const r = await fetch('/api/home')
+    if (r.status === 503) return fail('empty')
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
     home.value = await r.json()
+    loadError.value = ''
   } catch {
-    home.value = mock() // 서버가 꺼져 있거나 수집 전이면 시안 예시 데이터
+    fail('error')
   }
 }
+
+function fail(kind: 'empty' | 'error') {
+  // 시안 예시 데이터는 개발할 때만. 배포 화면에 "[드라마 제목]" 같은 가짜 데이터가 뜨면 고장처럼 보인다
+  if (import.meta.env.DEV) home.value = mock()
+  else loadError.value = kind
+}
+
+/** 마지막 업데이트가 하루 넘게 지났는지 (예약 수집이 멈췄다는 신호) */
+export const isStale = (iso?: string) => !!iso && Date.now() - Date.parse(iso) > 864e5
 
 // 새로고침 버튼: 서버가 기사·TMDB·KOBIS를 다시 불러온 뒤(1~2분) 화면 데이터를 다시 받는다
 export const refreshing = ref(false)

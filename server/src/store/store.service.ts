@@ -25,8 +25,10 @@ export class StoreService {
 
   async save(s: Store) {
     s.collectedAt = new Date().toISOString()
-    if (this.redis) await this.redis.set('store', s)
-    else await this.writeFile('store.json', s)
+    if (this.redis) return void (await this.redis.set('store', s))
+    // Vercel은 파일을 쓸 수 없어서 저장이 조용히 사라진다. 원인이 바로 보이게 막는다
+    if (env('VERCEL')) throw new Error('Vercel에서는 Upstash Redis 연결이 필요합니다 (Storage > Upstash for Redis)')
+    await this.writeFile('store.json', s)
   }
 
   private async readFile<T>(name: string): Promise<T | null> {
