@@ -1,5 +1,5 @@
 import { Controller, Get, Headers, HttpCode, Param, Post, UnauthorizedException } from '@nestjs/common'
-import { env, missingKeys, today } from '../config.js'
+import { env, keyHints, missingKeys, today } from '../config.js'
 import { CollectService } from '../collect/collect.service.js'
 import { StoreService } from '../store/store.service.js'
 import { HomeService } from './home.service.js'
@@ -16,7 +16,7 @@ export class ApiController {
   @Get('health')
   async health() {
     const { collectedAt, lastReport } = await this.store.load()
-    return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), redisVars: this.store.redisVars, today: today(), collectedAt, lastReport }
+    return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), keys: keyHints(), redisVars: this.store.redisVars, today: today(), collectedAt, lastReport }
   }
 
   /** 작품 상세 창 */
