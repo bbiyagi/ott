@@ -38,7 +38,7 @@ const calTitle = computed(() => {
 const isSel = (d: Date) => d.getTime() === sel.value.getTime()
 const dayItems = computed(() => on(sel.value))
 
-const { platform, cat, upcoming, available, showAll, more } = useOtt(() => props.data)
+const { platform, cat, upcoming, available, showAll, more, showAllUp, moreUp } = useOtt(() => props.data)
 
 const theaterTab = ref<'now' | 'soon'>('now')
 const movies = computed(() => props.data.theater[theaterTab.value])
@@ -196,6 +196,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               </div>
             </li>
           </ul>
+          <button v-if="moreUp > 0" type="button" class="more-btn" :aria-expanded="showAllUp" @click="showAllUp = !showAllUp">{{ showAllUp ? '접기 ↑' : `${moreUp}개 더 보기 ↓` }}</button>
           <p v-if="!upcoming.length" class="empty">조건에 맞는 공개 예정작이 없어요.</p>
         </div>
 

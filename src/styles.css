@@ -74,6 +74,10 @@ a.news:hover { color: var(--accent); border-color: var(--accent); }
 .shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(14,14,16,.92) 0%, rgba(14,14,16,.55) 38%, rgba(14,14,16,0) 70%); }
 .hero-badge { position: absolute; top: 16px; right: 16px; background: var(--accent); color: var(--bg); font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 8px; }
 
+/* 목록 "N개 더 보기" */
+.more-btn { min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--sub); font-size: 14px; font-weight: 600; }
+.more-btn:hover { color: var(--accent); border-color: var(--accent); }
+
 /* 기대작·인기 이유: "티빙 드라마 기대작 · 기사 9건" */
 .why { font-size: 13px; font-weight: 600; color: var(--sub); }
 

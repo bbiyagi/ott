@@ -27,7 +27,7 @@ const calTitle = computed(() => {
   return `${s.getMonth() + 1}월 ${s.getDate()}일 – ${e.getMonth() + 1}월 ${e.getDate()}일`
 })
 
-const { platform, cat, upcoming, available, showAll, more } = useOtt(() => props.data)
+const { platform, cat, upcoming, available, showAll, more, showAllUp, moreUp, total } = useOtt(() => props.data)
 
 const theaterTab = ref<'now' | 'soon'>('now')
 const movies = computed(() => props.data.theater[theaterTab.value])
@@ -148,7 +148,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
       <section id="ott" aria-labelledby="ott-h">
         <div class="sec-head base">
           <h2 id="ott-h" class="h2">OTT</h2>
-          <span class="muted t14">{{ upcoming.length + available.length }}개 작품</span>
+          <span class="muted t14">{{ total }}개 작품</span>
         </div>
         <div class="col12">
           <div role="group" aria-label="플랫폼" class="chips">
@@ -182,6 +182,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                 </div>
               </li>
             </ul>
+            <button v-if="moreUp > 0" type="button" class="more-btn" :aria-expanded="showAllUp" @click="showAllUp = !showAllUp">{{ showAllUp ? '접기 ↑' : `${moreUp}개 더 보기 ↓` }}</button>
             <p v-if="!upcoming.length" class="empty">조건에 맞는 공개 예정작이 없어요.</p>
           </div>
 

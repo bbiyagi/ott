@@ -73,12 +73,16 @@ export const PLATFORMS = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠
 export const CATS = ['전체', '영화', '드라마', '예능', '애니메이션']
 
 export function useOtt(data: () => HomeData) {
-  const platform = ref('전체'), cat = ref('전체'), showAll = ref(false)
+  const platform = ref('전체'), cat = ref('전체'), showAll = ref(false), showAllUp = ref(false)
   const ok = (w: Work) =>
     (platform.value === '전체' || (w.platforms ?? [w.platform]).includes(platform.value)) && (cat.value === '전체' || w.type === cat.value)
-  const upcoming = computed(() => data().ott.upcoming.filter(ok).sort(byDate))
+  // 공개 예정은 6개까지 (오른쪽 포스터 3줄과 높이가 비슷하게), 나머지는 "더 보기"
+  const allUpcoming = computed(() => data().ott.upcoming.filter(ok).sort(byDate))
+  const upcoming = computed(() => (showAllUp.value ? allUpcoming.value : allUpcoming.value.slice(0, 6)))
+  const moreUp = computed(() => allUpcoming.value.length - 6)
   const allAvailable = computed(() => data().ott.available.filter(ok))
   const available = computed(() => (showAll.value ? allAvailable.value : allAvailable.value.slice(0, 12)))
   const more = computed(() => allAvailable.value.length > 12) // "전체 보기"가 필요한지
-  return { platform, cat, upcoming, available, showAll, more }
+  const total = computed(() => allUpcoming.value.length + allAvailable.value.length)
+  return { platform, cat, upcoming, available, showAll, more, showAllUp, moreUp, total }
 }
