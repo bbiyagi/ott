@@ -10,11 +10,21 @@ const DIR = 'server/data'
 // Vercel(파일 쓰기 불가)에서는 Upstash Redis, 로컬은 Redis 키가 없으면 JSON 파일
 @Injectable()
 export class StoreService {
+  // Vercel에서 Upstash를 연결할 때 접두어를 붙일 수 있다 (예: STORAGE_KV_REST_API_URL). 끝 이름으로 찾는다
   private redis = (() => {
-    const url = env('UPSTASH_REDIS_REST_URL') ?? env('KV_REST_API_URL')
-    const token = env('UPSTASH_REDIS_REST_TOKEN') ?? env('KV_REST_API_TOKEN')
+    const find = (...ends: string[]) => {
+      const k = Object.keys(process.env).find((name) => ends.some((e) => name.endsWith(e)) && env(name))
+      return k ? env(k) : undefined
+    }
+    const url = find('UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL')
+    const token = find('UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN')
     return url && token ? new Redis({ url, token }) : null
   })()
+
+  /** 진단용: Redis 관련 환경 변수 "이름"만 (값은 보이지 않는다) */
+  get redisVars() {
+    return Object.keys(process.env).filter((k) => /REDIS|KV_/.test(k)).sort()
+  }
 
   get kind() { return this.redis ? 'redis' : 'file' }
 

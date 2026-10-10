@@ -15,7 +15,7 @@ export class ApiController {
 
   @Get('health')
   health() {
-    return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), today: today() }
+    return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), redisVars: this.store.redisVars, today: today() }
   }
 
   /** 작품 상세 창 */
