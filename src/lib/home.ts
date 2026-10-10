@@ -5,25 +5,39 @@ import { TODAY, fmt, md, parse } from './date'
 export type HotMode = 'soon' | 'now'
 
 export const home = ref<HomeData | null>(null)
+const fromServer = ref(false)
 
 export async function loadHome() {
   try {
     const r = await fetch('/api/home')
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
     home.value = await r.json()
+    fromServer.value = true
   } catch {
-    home.value = mock() // 서버가 꺼져 있으면 시안 예시 데이터
+    home.value = mock() // 서버가 꺼져 있거나 수집 전이면 시안 예시 데이터
   }
 }
 
-// 기대돼요/추천해요: 로그인 없이 브라우저에 기억
+// 기대돼요/추천해요: 누른 상태는 브라우저에, 숫자는 서버에
 const KEY = 'nextscene.liked'
 const saved = (): string[] => { try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] } }
 export const liked = reactive(new Set<string>(saved()))
-export function toggleLike(id: string) {
-  if (liked.has(id)) liked.delete(id)
-  else liked.add(id)
+const counts = reactive(new Map<string, number>())
+export const likeCount = (w: Work) => counts.get(w.id) ?? w.likes ?? 0
+
+export async function toggleLike(w: Work) {
+  const on = !liked.has(w.id)
+  if (on) liked.add(w.id)
+  else liked.delete(w.id)
   try { localStorage.setItem(KEY, JSON.stringify([...liked])) } catch { /* 저장 못 해도 화면은 동작 */ }
+  counts.set(w.id, Math.max(0, likeCount(w) + (on ? 1 : -1)))
+  if (!fromServer.value) return
+  try {
+    const r = await fetch(`/api/likes/${encodeURIComponent(w.id)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }),
+    })
+    if (r.ok) counts.set(w.id, (await r.json()).likes)
+  } catch { /* 숫자는 다음 새로고침 때 맞춰진다 */ }
 }
 
 export const dday = (w: Work) => {
@@ -36,8 +50,10 @@ export const when = (w: Work) => (w.date ? fmt(w.date) : w.dateText ?? '미정')
 export const byDate = (a: Work, b: Work) => (a.date ?? '9999').localeCompare(b.date ?? '9999')
 
 export const hotTag = (w: Work, mode: HotMode) => (mode === 'now' ? w.rank ?? '' : dday(w))
-export const hotDate = (w: Work, mode: HotMode) =>
-  mode === 'soon' || !w.date ? when(w) : `${md(w.date)} ${w.platform === '극장' ? '개봉' : '공개'}`
+const hotDate = (w: Work, mode: HotMode) =>
+  mode === 'soon' ? when(w) : w.date ? `${md(w.date)} ${w.platform === '극장' ? '개봉' : '공개'}` : ''
+/** 티빙 · 드라마 · 10.14 (수) */
+export const hotMeta = (w: Work, mode: HotMode) => [w.platform, w.type, hotDate(w, mode)].filter(Boolean).join(' · ')
 
 export const bg = (url?: string) => (url ? { background: `center/cover no-repeat url("${url}")` } : undefined)
 

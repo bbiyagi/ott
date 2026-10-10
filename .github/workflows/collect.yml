@@ -1,0 +1,14 @@
+# 하루 2번(한국 시간 7시·19시) 배포된 서버의 수집을 실행한다.
+# Vercel Hobby 크론은 하루 1번까지라 GitHub Actions로 부른다.
+# 저장소 Settings > Secrets and variables > Actions에 SITE_URL, CRON_SECRET을 넣는다.
+name: collect
+on:
+  schedule:
+    - cron: '0 22 * * *'
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -m 300 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.SITE_URL }}/api/collect"

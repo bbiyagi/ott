@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
-import type { HomeData } from '../../data/mock'
+import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, PLATFORMS, bg, dday, hotDate, hotTag, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, PLATFORMS, bg, dday, hotMeta, hotTag, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
 import LikeButton from '../shared/LikeButton.vue'
@@ -15,7 +15,7 @@ const active = ref('hot')
 
 const hotMode = ref<HotMode>('soon')
 const hot = computed(() => props.data.hot[hotMode.value])
-const meta = (w: (typeof hot.value)[number]) => `${w.platform} · ${w.type} · ${hotDate(w, hotMode.value)}`
+const meta = (w: Work) => hotMeta(w, hotMode.value)
 
 const { view, y, m, week, on, months, pct, grid, step, toToday, pickMonth, isToday, isCurMonth, numCls } = useCalendar(() => props.data.events)
 const calTitle = computed(() => {

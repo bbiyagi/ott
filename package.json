@@ -3,15 +3,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "dev": "tsc -p server && concurrently -k -n web,tsc,api -c cyan,gray,magenta \"vite\" \"tsc -p server -w --preserveWatchOutput\" \"node --watch --env-file-if-exists=server/.env server/dist/main.js\"",
+    "build": "vue-tsc --noEmit && vite build && tsc -p server",
+    "collect": "tsc -p server && node --env-file-if-exists=server/.env server/dist/collect/run.js",
+    "test": "tsc -p server && node --test server/dist/collect/collect.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.43"
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@nestjs/common": "^12.1.2",
+    "@nestjs/core": "^12.1.2",
+    "@nestjs/platform-express": "^12.1.2",
+    "@upstash/redis": "^1.39.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "vue": "^3.5.43",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.10",
+    "concurrently": "^10.0.6",
     "typescript": "^5.9.3",
     "vite": "^8.3.4",
     "vue-tsc": "^3.3.12"

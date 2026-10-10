@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, PLATFORMS, bg, dday, hotDate, hotTag, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, PLATFORMS, bg, dday, hotMeta, hotTag, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
 import LikeButton from '../shared/LikeButton.vue'
@@ -20,7 +20,7 @@ function go(s: Screen) {
 
 const hotMode = ref<HotMode>('soon')
 const hot = computed(() => props.data.hot[hotMode.value])
-const meta = (w: Work) => `${w.platform} · ${w.type} · ${hotDate(w, hotMode.value)}`
+const meta = (w: Work) => hotMeta(w, hotMode.value)
 const title = computed(() => ({ hot: hotMode.value === 'soon' ? '곧 공개되는 기대작' : '지금 인기 있는 작품', cal: '공개 일정', ott: 'OTT', theater: '극장' })[screen.value])
 
 const { view, y, m, sel, week, on, months, pct, grid, pick, step, toToday, pickMonth, isToday, isCurMonth, numCls } = useCalendar(() => props.data.events)
