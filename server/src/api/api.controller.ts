@@ -14,8 +14,9 @@ export class ApiController {
   }
 
   @Get('health')
-  health() {
-    return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), redisVars: this.store.redisVars, today: today() }
+  async health() {
+    const { collectedAt, lastReport } = await this.store.load()
+    return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), redisVars: this.store.redisVars, today: today(), collectedAt, lastReport }
   }
 
   /** 작품 상세 창 */

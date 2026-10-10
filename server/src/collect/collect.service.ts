@@ -76,6 +76,7 @@ export class CollectService {
     await step('OTT 서비스 중', has('tmdb'), async () => { s.ottAvailable = await this.tmdb.available(t) })
     await step('극장', has('kobis') || has('tmdb'), async () => { s.theater = await this.theater(t) })
 
+    s.lastReport = { articles: report.articles, newWorks: report.newWorks, skipped: report.skipped }
     await this.store.save(s)
     this.log.log(JSON.stringify(report))
     return report

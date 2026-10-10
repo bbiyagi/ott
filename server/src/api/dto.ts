@@ -51,4 +51,5 @@ export interface Store {
   ottAvailable: (Work & { pop?: number; ko?: boolean })[] // pop = TMDB 인기 점수, ko = 한국어 작품, longRun은 Work에
   theater: { now: Work[]; soon: Work[] }
   collectedAt?: string
+  lastReport?: { articles: number; newWorks: number; skipped: string[] } // 마지막 수집 결과 (/api/health에서 확인)
 }
