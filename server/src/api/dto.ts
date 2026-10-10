@@ -13,11 +13,16 @@ export interface Work {
   poster?: string // 세로 포스터 (w500)
   backdrop?: string // 가로 스틸 (w1280), 큰 배너용
   longRun?: boolean // 시즌당 20회 넘는 장수 프로그램 (메인에서 뺀다)
+  overview?: string // 줄거리 (상세 창에서만 보낸다)
+  tmdbUrl?: string
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
 }
 
-export interface CalEvent { date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
+export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
+
+/** 상세 창: 줄거리, 출처 기사 목록, TMDB 링크 */
+export interface WorkDetail extends Work { sources: Source[] }
 
 export interface HomeData {
   hot: { soon: Work[]; now: Work[] }
@@ -38,7 +43,6 @@ export interface StoredWork extends Work {
   dateBy?: 'news' | 'tmdb' // 지금 날짜의 출처. TMDB 날짜는 기사로 덮지 않는다
   tmdbId?: number | null // null = 찾아봤지만 없음
   tmdbMedia?: 'movie' | 'tv'
-  overview?: string
 }
 
 export interface Store {

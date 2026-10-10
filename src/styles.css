@@ -43,7 +43,15 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .loading { padding: 48px 32px; }
 
 .logo { font-weight: 800; letter-spacing: -0.5px; text-decoration: none; color: var(--text); }
-.card { background: var(--surf); border-radius: 14px; }
+.card { position: relative; background: var(--surf); border-radius: 14px; }
+
+/* 카드 전체를 누르면 상세 창: 투명 버튼을 카드 위에 깔고, 안의 링크(기사 기준·출처)는 그 위로 올린다 */
+.hit { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+.hit:focus-visible { outline-offset: -2px; }
+a.news, .src { position: relative; z-index: 2; }
+button.tile, button.mitem, button.witem, button.day-item { font: inherit; color: inherit; text-align: left; border: 0; cursor: pointer; }
+button.tile { padding: 0; background: none; width: 100%; }
+button.tile:hover, button.mitem:hover, button.witem:hover, button.day-item:hover { color: var(--accent); }
 .ph { background: var(--stripe); border-radius: 8px; }
 .ph-label { font-size: 11px; color: var(--mute); font-family: ui-monospace, monospace; }
 .poster { position: relative; aspect-ratio: 2/3; border-radius: 12px; display: flex; align-items: flex-end; padding: 10px; }

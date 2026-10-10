@@ -5,6 +5,7 @@ import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
 import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, refreshMsg, refreshing, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
+import { openDetail } from '../../lib/detail'
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
 import RefreshButton from '../shared/RefreshButton.vue'
@@ -37,7 +38,7 @@ const calTitle = computed(() => {
 const isSel = (d: Date) => d.getTime() === sel.value.getTime()
 const dayItems = computed(() => on(sel.value))
 
-const { platform, cat, upcoming, available } = useOtt(() => props.data)
+const { platform, cat, upcoming, available, showAll, more } = useOtt(() => props.data)
 
 const theaterTab = ref<'now' | 'soon'>('now')
 const movies = computed(() => props.data.theater[theaterTab.value])
@@ -60,6 +61,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <Seg v-model="hotMode" grid :options="[['soon', '공개 예정'], ['now', '지금 인기']]" label="기대작 구분" />
         <template v-if="hot.length">
           <article class="hero lead" :style="bg(hiRes(hot[0].poster) ?? hot[0].backdrop)">
+            <button type="button" class="hit" :aria-label="`${hot[0].title} 자세히 보기`" @click="openDetail(hot[0])"></button>
             <span v-if="!hot[0].poster && !hot[0].backdrop" class="ph-label">still</span>
             <div class="shade"></div>
             <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
@@ -74,6 +76,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </article>
           <ul class="list10">
             <li v-for="h in hot.slice(1)" :key="h.id" class="card hot-item">
+              <button type="button" class="hit" :aria-label="`${h.title} 자세히 보기`" @click="openDetail(h)"></button>
               <span class="ph" :style="bg(h.poster)"></span>
               <div class="hot-body col3">
                 <span class="tag">{{ hotTag(h, hotMode) }}</span>
@@ -144,7 +147,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </div>
           <ul class="list8">
             <li v-for="(e, j) in dayItems" :key="j">
-              <a :href="e.source ?? '#'" class="card day-item">
+              <button type="button" class="card day-item" @click="openDetail(e)">
                 <span class="ph"></span>
                 <span class="col2">
                   <span class="row-chip">
@@ -153,8 +156,8 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                   </span>
                   <span class="meta" :title="platformTitle(e)">{{ platformLabel(e) }} · {{ e.type }}</span>
                 </span>
-                <span class="src">{{ e.via === 'news' ? '기사' : e.via === 'tmdb' ? 'TMDB' : '출처' }} ↗</span>
-              </a>
+                <span class="muted" aria-hidden="true">›</span>
+              </button>
             </li>
           </ul>
           <p v-if="!dayItems.length" class="empty">이날 공개되는 작품이 없어요.</p>
@@ -178,6 +181,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </div>
           <ul class="list8">
             <li v-for="u in upcoming" :key="u.id" class="card up">
+              <button type="button" class="hit" :aria-label="`${u.title} 자세히 보기`" @click="openDetail(u)"></button>
               <div class="ph" :style="bg(u.poster)"></div>
               <div class="col3 grow">
                 <span class="row-chip">
@@ -198,14 +202,14 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <div class="col14">
           <div class="sub-head">
             <h2 class="h20">지금 볼 수 있어요</h2>
-            <a href="#" class="all">전체 보기 →</a>
+            <button v-if="more" type="button" class="all" :aria-expanded="showAll" @click="showAll = !showAll">{{ showAll ? '접기 ↑' : '전체 보기 →' }}</button>
           </div>
           <div class="avail">
-            <a v-for="v in available" :key="v.id" href="#" class="tile">
+            <button v-for="v in available" :key="v.id" type="button" class="tile" @click="openDetail(v)">
               <div class="ph poster" :style="bg(v.poster)"><span v-if="!v.poster" class="ph-label">poster</span></div>
               <span class="t13">{{ v.title }}</span>
               <span class="meta tiny" :title="platformTitle(v)">{{ platformLabel(v) }}</span>
-            </a>
+            </button>
           </div>
           <p v-if="!available.length" class="empty">조건에 맞는 작품이 없어요.</p>
         </div>
@@ -214,7 +218,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
       <div v-else class="col20">
         <Seg v-model="theaterTab" grid :options="[['now', '상영중'], ['soon', '개봉예정']]" label="극장 구분" />
         <div class="movies">
-          <a v-for="mv in movies" :key="mv.id" href="#" class="tile">
+          <button v-for="mv in movies" :key="mv.id" type="button" class="tile" @click="openDetail(mv)">
             <div class="ph poster" :style="bg(mv.poster)">
               <span v-if="!mv.poster" class="ph-label">poster</span>
               <span class="badge" :class="{ soon: theaterTab === 'soon' }">{{ theaterTab === 'now' ? '상영중' : dday(mv) }}</span>
@@ -223,7 +227,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="t15">{{ mv.title }}</span>
               <span class="meta small">{{ mv.genre }} · {{ mv.date ? md(mv.date) : when(mv) }} 개봉</span>
             </div>
-          </a>
+          </button>
         </div>
         <p v-if="!movies.length" class="empty">표시할 영화가 없어요.</p>
       </div>
@@ -298,7 +302,7 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 .legend span { display: flex; align-items: center; gap: 6px; }
 .legend i { width: 6px; height: 6px; }
 .day { padding-top: 8px; }
-.day-item { display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 12px; text-decoration: none; }
+.day-item { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 44px; padding: 12px; background: var(--surf); }
 .day-item > .ph { flex: 0 0 44px; aspect-ratio: 2/3; border-radius: 6px; }
 .day-item > .col2 { flex: 1 1 auto; }
 
@@ -311,7 +315,7 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 .up-side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; }
 .up-side .src { min-height: 32px; display: flex; align-items: center; }
 .dday { font-size: 17px; font-weight: 800; color: var(--accent); }
-.all { min-height: 44px; display: flex; align-items: center; font-size: 13px; color: var(--mute); text-decoration: none; }
+.all { min-height: 44px; display: flex; align-items: center; font-size: 13px; color: var(--mute); border: 0; background: none; padding: 0; }
 .avail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 10px; }
 .avail .tile { gap: 6px; }
 .avail .poster { border-radius: 10px; padding: 6px; }

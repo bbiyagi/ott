@@ -5,6 +5,7 @@ import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
 import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
+import { openDetail } from '../../lib/detail'
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
 import RefreshButton from '../shared/RefreshButton.vue'
@@ -26,7 +27,7 @@ const calTitle = computed(() => {
   return `${s.getMonth() + 1}월 ${s.getDate()}일 – ${e.getMonth() + 1}월 ${e.getDate()}일`
 })
 
-const { platform, cat, upcoming, available } = useOtt(() => props.data)
+const { platform, cat, upcoming, available, showAll, more } = useOtt(() => props.data)
 
 const theaterTab = ref<'now' | 'soon'>('now')
 const movies = computed(() => props.data.theater[theaterTab.value])
@@ -59,6 +60,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         </div>
         <div v-if="hot.length" class="hot">
           <article class="hero lead" :style="bg(hot[0].backdrop ?? hot[0].poster)">
+            <button type="button" class="hit" :aria-label="`${hot[0].title} 자세히 보기`" @click="openDetail(hot[0])"></button>
             <span v-if="!hot[0].backdrop && !hot[0].poster" class="ph-label">still · 16:10</span>
             <div class="shade"></div>
             <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
@@ -73,6 +75,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </article>
           <ul class="hot-list">
             <li v-for="h in hot.slice(1)" :key="h.id" class="card hot-item">
+              <button type="button" class="hit" :aria-label="`${h.title} 자세히 보기`" @click="openDetail(h)"></button>
               <span class="ph" :style="bg(h.poster)"></span>
               <div class="hot-body col4">
                 <span class="tag">{{ hotTag(h, hotMode) }}</span>
@@ -120,7 +123,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div v-if="!d" class="mcell blank"></div>
               <div v-else class="mcell" :class="{ 'today-ring': isToday(d) }">
                 <span class="num" :class="numCls(d)">{{ d.getDate() }}</span>
-                <a v-for="(e, j) in on(d).slice(0, 3)" :key="j" :href="e.source ?? '#'" class="mitem" :title="`${platformTitle(e)} · ${e.title}${e.via === 'news' ? ` (${NEWS_NOTE})` : ''}`"><span v-if="e.via === 'news'" class="news sm">기사</span><span class="muted">{{ platformLabel(e) }}</span> {{ e.title }}</a>
+                <button v-for="(e, j) in on(d).slice(0, 3)" :key="j" type="button" class="mitem" :title="`${platformTitle(e)} · ${e.title}${e.via === 'news' ? ` (${NEWS_NOTE})` : ''}`" @click="openDetail(e)"><span v-if="e.via === 'news'" class="news sm">기사</span><span class="muted">{{ platformLabel(e) }}</span> {{ e.title }}</button>
                 <span v-if="on(d).length > 3" class="more">+{{ on(d).length - 3 }}개 더</span>
               </div>
             </template>
@@ -133,10 +136,10 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="wnum" :class="{ accent: isToday(d) }">{{ d.getDate() }}</span>
               <span class="wdow" :class="dowCls(i)">{{ DOW[i] }}</span>
             </div>
-            <a v-for="(e, j) in on(d)" :key="j" :href="e.source ?? '#'" class="witem" :title="e.via === 'news' ? NEWS_NOTE : undefined">
+            <button v-for="(e, j) in on(d)" :key="j" type="button" class="witem" :title="e.via === 'news' ? NEWS_NOTE : undefined" @click="openDetail(e)">
               <span class="muted" :title="platformTitle(e)"><span v-if="e.via === 'news'" class="news sm">기사</span>{{ platformLabel(e) }}</span>
               <b>{{ e.title }}</b>
-            </a>
+            </button>
           </div>
         </div>
         <p v-if="view !== 'year'" class="cal-note"><span class="news sm">기사</span>{{ NEWS_NOTE }}</p>
@@ -164,6 +167,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             </div>
             <ul class="ups">
               <li v-for="u in upcoming" :key="u.id" class="card up">
+                <button type="button" class="hit" :aria-label="`${u.title} 자세히 보기`" @click="openDetail(u)"></button>
                 <div class="ph" :style="bg(u.poster)"></div>
                 <div class="up-body">
                   <span class="row-chip">
@@ -184,14 +188,14 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <div class="ott-col">
             <div class="sub-head">
               <h3>지금 볼 수 있어요</h3>
-              <a href="#" class="all">전체 보기 →</a>
+              <button v-if="more" type="button" class="all" :aria-expanded="showAll" @click="showAll = !showAll">{{ showAll ? '접기 ↑' : '전체 보기 →' }}</button>
             </div>
             <div class="avail">
-              <a v-for="v in available" :key="v.id" href="#" class="tile">
+              <button v-for="v in available" :key="v.id" type="button" class="tile" @click="openDetail(v)">
                 <div class="ph poster" :style="bg(v.poster)"><span v-if="!v.poster" class="ph-label">poster</span></div>
                 <span class="t14 b6">{{ v.title }}</span>
                 <span class="meta small" :title="platformTitle(v)">{{ platformLabel(v) }} · {{ v.type }}</span>
-              </a>
+              </button>
             </div>
             <p v-if="!available.length" class="empty">조건에 맞는 작품이 없어요.</p>
           </div>
@@ -204,7 +208,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <Seg v-model="theaterTab" :options="[['now', '상영중'], ['soon', '개봉예정']]" label="극장 구분" />
         </div>
         <div class="movies">
-          <a v-for="mv in movies" :key="mv.id" href="#" class="tile">
+          <button v-for="mv in movies" :key="mv.id" type="button" class="tile" @click="openDetail(mv)">
             <div class="ph poster" :style="bg(mv.poster)">
               <span v-if="!mv.poster" class="ph-label">poster</span>
               <span class="badge" :class="{ soon: theaterTab === 'soon' }">{{ theaterTab === 'now' ? '상영중' : dday(mv) }}</span>
@@ -213,7 +217,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="mtitle">{{ mv.title }}</span>
               <span class="meta">{{ mv.genre }} · {{ mv.date ? md(mv.date) : when(mv) }} 개봉</span>
             </div>
-          </a>
+          </button>
         </div>
         <p v-if="!movies.length" class="empty">표시할 영화가 없어요.</p>
       </section>
@@ -279,7 +283,7 @@ h3 { font-size: 20px; font-weight: 700; }
 .mcell { display: flex; flex-direction: column; gap: 4px; min-height: 112px; padding: 10px; min-width: 0; border-radius: 12px; background: var(--surf); }
 .mcell.blank { background: var(--blank); }
 .num { font-size: 14px; font-weight: 700; }
-.mitem { display: block; font-size: 12px; line-height: 1.5; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mitem { display: block; width: 100%; padding: 0; background: none; font-size: 12px; line-height: 1.5; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .more { font-size: 12px; color: var(--mute); }
 .wcell { display: flex; flex-direction: column; gap: 10px; min-height: 200px; padding: 14px 10px; min-width: 0; border-radius: 14px; background: var(--surf); }
 .wtop { display: flex; align-items: baseline; gap: 8px; }
@@ -299,7 +303,8 @@ h3 { font-size: 20px; font-weight: 700; }
 .up-side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .up-side .src { padding: 8px 0; }
 .dday { font-size: 18px; font-weight: 800; color: var(--accent); }
-.all { font-size: 13px; color: var(--mute); padding: 8px 0; text-decoration: none; }
+.all { font-size: 13px; color: var(--mute); padding: 8px 0; border: 0; background: none; }
+.all:hover { color: var(--accent); }
 .avail { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 20px 12px; }
 .avail .tile { gap: 8px; }
 .avail .poster { border-radius: 10px; padding: 8px; }

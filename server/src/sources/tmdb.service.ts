@@ -116,7 +116,7 @@ export class TmdbService {
   async searchMovie(title: string) {
     const x = (await this.get('/search/movie', { query: title, region: 'KR' })).results[0]
     if (!x) return null
-    return { poster: img(x.poster_path), genre: (await this.genreMap()).get(x.genre_ids?.[0]) }
+    return { ...pics(x), genre: (await this.genreMap()).get(x.genre_ids?.[0]), overview: (x.overview as string) || undefined, tmdbUrl: `https://www.themoviedb.org/movie/${x.id}` }
   }
 
   /** KR에서 그 플랫폼 정액제로 볼 수 있는지 */
@@ -154,6 +154,7 @@ export class TmdbService {
           out.push({
             id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: null, ...pics(x),
             rank: `${platform} ${label} 인기 ${i + 1}위`, pop: x.popularity, ko: x.original_language === 'ko',
+            overview: x.overview || undefined, tmdbUrl: `https://www.themoviedb.org/${media}/${x.id}`,
             longRun: media === 'tv' ? await this.longRun(x.id) : false,
           })
         }
@@ -172,7 +173,10 @@ export class TmdbService {
     const genres = await this.genreMap()
     return (r.results as any[])
       .slice(0, 12)
-      .map((x) => ({ id: `tmdb-movie-${x.id}`, title: x.title, platform: '극장', type: '영화', date: x.release_date || null, genre: genres.get(x.genre_ids?.[0]), poster: img(x.poster_path) }))
+      .map((x) => ({
+        id: `tmdb-movie-${x.id}`, title: x.title, platform: '극장', type: '영화', date: x.release_date || null, genre: genres.get(x.genre_ids?.[0]),
+        ...pics(x), overview: (x.overview as string) || undefined, tmdbUrl: `https://www.themoviedb.org/movie/${x.id}`,
+      }))
       .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
   }
 }

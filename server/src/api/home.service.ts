@@ -1,5 +1,5 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common'
-import type { CalEvent, HomeData, StoredWork, Work } from './dto.js'
+import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
+import type { CalEvent, HomeData, StoredWork, Work, WorkDetail } from './dto.js'
 import { addDays, today } from '../config.js'
 import { StoreService } from '../store/store.service.js'
 import { PLATFORMS } from '../sources/extract.service.js'
@@ -80,7 +80,7 @@ export class HomeService {
       }
     }
 
-    const ev = (w: Work): CalEvent => ({ date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source, via: w.via })
+    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source, via: w.via })
     const events = group([...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev), true)
 
     return {
@@ -90,5 +90,26 @@ export class HomeService {
       events,
       updatedAt: s.collectedAt,
     }
+  }
+
+  /** 상세 창: 목록에는 없는 줄거리·출처 기사·TMDB 링크까지 */
+  async detail(id: string): Promise<WorkDetail> {
+    const s = await this.store.load()
+    const w = s.works.find((x) => x.id === id)
+    if (w) {
+      // 같은 작품의 다른 플랫폼 (목록의 "+2"와 같은 묶음)
+      const mates = s.works.filter((x) => norm(x.title) === norm(w.title) && (PLATFORMS as readonly string[]).includes(x.platform))
+      const news = mates.flatMap((x) => x.sources).filter((x) => x.title !== 'TMDB')
+      return {
+        id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, dateText: w.dateText, poster: w.poster, backdrop: w.backdrop,
+        overview: w.overview, via: w.dateBy ?? 'news', platforms: [...new Set([w.platform, ...mates.map((x) => x.platform)])],
+        tmdbUrl: w.tmdbId ? `https://www.themoviedb.org/${w.tmdbMedia ?? 'tv'}/${w.tmdbId}` : undefined,
+        sources: [...new Map(news.map((x) => [x.link, x])).values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20),
+      }
+    }
+    const other = [...s.ottAvailable, ...s.theater.now, ...s.theater.soon].find((x) => x.id === id)
+    if (!other) throw new NotFoundException()
+    const { pop: _pop, ko: _ko, ...rest } = other as typeof other & { pop?: number; ko?: boolean }
+    return { ...rest, sources: [] }
   }
 }

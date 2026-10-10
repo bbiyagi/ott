@@ -16,9 +16,14 @@ export interface Work {
   backdrop?: string // 가로 스틸 (큰 배너)
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // news = 기사에서 모은 날짜라 정확하지 않을 수 있음
+  overview?: string // 상세 창에서만
+  tmdbUrl?: string
 }
 
-export interface CalEvent { date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
+export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
+
+/** 상세 창 (/api/works/:id) */
+export interface WorkDetail extends Work { sources: { title: string; link: string; date: string }[] }
 
 export interface HomeData {
   hot: { soon: Work[]; now: Work[] }
@@ -44,7 +49,7 @@ function events(): CalEvent[] {
     const n = h < 3 ? 0 : h < 7 ? 1 : h < 9 ? 2 : 3
     for (let i = 0; i < n; i++) {
       const p = P[(m + day + i * 2) % P.length], t = p === '극장' ? '영화' : T[(m * 3 + day + i) % 4]
-      out.push({ date: iso(x), platform: p, type: t, title: `[${t} 제목]` })
+      out.push({ id: `ev-${iso(x)}-${i}`, date: iso(x), platform: p, type: t, title: `[${t} 제목]` })
     }
   }
   return out

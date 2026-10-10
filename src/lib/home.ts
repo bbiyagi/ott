@@ -73,10 +73,12 @@ export const PLATFORMS = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠
 export const CATS = ['전체', '영화', '드라마', '예능', '애니메이션']
 
 export function useOtt(data: () => HomeData) {
-  const platform = ref('전체'), cat = ref('전체')
+  const platform = ref('전체'), cat = ref('전체'), showAll = ref(false)
   const ok = (w: Work) =>
     (platform.value === '전체' || (w.platforms ?? [w.platform]).includes(platform.value)) && (cat.value === '전체' || w.type === cat.value)
   const upcoming = computed(() => data().ott.upcoming.filter(ok).sort(byDate))
-  const available = computed(() => data().ott.available.filter(ok).slice(0, 12))
-  return { platform, cat, upcoming, available }
+  const allAvailable = computed(() => data().ott.available.filter(ok))
+  const available = computed(() => (showAll.value ? allAvailable.value : allAvailable.value.slice(0, 12)))
+  const more = computed(() => allAvailable.value.length > 12) // "전체 보기"가 필요한지
+  return { platform, cat, upcoming, available, showAll, more }
 }

@@ -165,7 +165,7 @@ export class CollectService {
     const now: Work[] = []
     for (const m of box) {
       const info = has('tmdb') ? await this.tmdb.searchMovie(m.title) : null
-      now.push({ id: `kobis-${m.code}`, title: m.title, platform: '극장', type: '영화', date: m.openDt, genre: info?.genre, poster: info?.poster })
+      now.push({ id: `kobis-${m.code}`, title: m.title, platform: '극장', type: '영화', date: m.openDt, ...info })
     }
     const soon = has('tmdb') ? (await this.tmdb.upcomingMovies(t)).filter((x) => !now.some((n) => n.title === x.title)) : []
     return { now, soon }

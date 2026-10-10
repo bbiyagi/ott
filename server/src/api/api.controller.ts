@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, HttpCode, Post, UnauthorizedException } from '@nestjs/common'
+import { Controller, Get, Headers, HttpCode, Param, Post, UnauthorizedException } from '@nestjs/common'
 import { env, missingKeys, today } from '../config.js'
 import { CollectService } from '../collect/collect.service.js'
 import { StoreService } from '../store/store.service.js'
@@ -16,6 +16,12 @@ export class ApiController {
   @Get('health')
   health() {
     return { ok: true, storage: this.store.kind, missingKeys: missingKeys(), today: today() }
+  }
+
+  /** 작품 상세 창 */
+  @Get('works/:id')
+  work(@Param('id') id: string) {
+    return this.home.detail(id)
   }
 
   /** 화면의 새로고침 버튼: 기사·TMDB·KOBIS를 다시 불러온다 (10분에 한 번) */
