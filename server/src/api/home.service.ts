@@ -3,6 +3,16 @@ import type { CalEvent, HomeData, StoredWork, Work } from './dto.js'
 import { addDays, today } from '../config.js'
 import { StoreService } from '../store/store.service.js'
 
+/** "9월 중", "상반기", "2분기"가 오늘 기준으로 이미 지났는지 */
+export function vaguePast(text: string | undefined, today: string) {
+  const m = Number(today.slice(5, 7))
+  const month = text?.match(/^(\d{1,2})월/)
+  if (month) return Number(month[1]) < m
+  const q = text?.match(/([1-4])분기/)
+  if (q) return Number(q[1]) * 3 < m
+  return text === '상반기' && m > 6
+}
+
 @Injectable()
 export class HomeService {
   constructor(private store: StoreService) {}
@@ -20,7 +30,7 @@ export class HomeService {
 
     // 규칙 추출이라 잘못 뽑힌 제목이 섞일 수 있다. TMDB에 있거나 기사 2개 이상에 나온 작품만 보여 준다
     const works = s.works.filter((w) => w.tmdbId || w.sources.length >= 2)
-    const upcoming = works.filter((w) => w.status === 'upcoming' && (!w.date || w.date >= t)).map(out)
+    const upcoming = works.filter((w) => w.status === 'upcoming' && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out)
     const soon = upcoming
       .filter((w) => w.date && w.date >= t && w.date <= addDays(t, 30))
       .sort((a, b) => b.likes! - a.likes! || a.date!.localeCompare(b.date!))
@@ -38,7 +48,7 @@ export class HomeService {
 
     return {
       hot: { soon, now },
-      ott: { upcoming, available: oa.slice(0, 12) },
+      ott: { upcoming, available: oa }, // 플랫폼 필터가 화면에서 걸리므로 자르지 않는다
       theater: { now: tn, soon: s.theater.soon.map(out) },
       events,
     }

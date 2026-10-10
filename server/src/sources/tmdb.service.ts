@@ -13,7 +13,12 @@ const NAMES: Record<string, RegExp> = {
   쿠팡플레이: /coupang/i,
   웨이브: /wavve/i,
 }
+// 플랫폼 오리지널 시리즈의 TMDB 네트워크 id (실제 작품의 네트워크에서 확인: 오징어 게임, 환승연애, 무빙, 소년시대, 피의 게임)
+const NETWORKS: Record<string, number> = { 넷플릭스: 213, 티빙: 3897, '디즈니+': 2739, 쿠팡플레이: 5169, 웨이브: 3357 }
 const img = (p?: string | null) => (p ? `https://image.tmdb.org/t/p/w342${p}` : undefined)
+// TMDB 장르: 애니메이션 16, 리얼리티 10764, 토크 10767
+const typeOf = (media: Media, genres: number[] = []) =>
+  genres.includes(16) ? '애니메이션' : media === 'movie' ? '영화' : genres.some((n) => n === 10764 || n === 10767) ? '예능' : '드라마'
 
 // 외부 응답은 쓰는 필드만 읽어서 any로 둔다
 @Injectable()
@@ -50,13 +55,47 @@ export class TmdbService {
     return (this.genres ??= this.get('/genre/movie/list').then((r) => new Map(r.genres.map((g: any) => [g.id, g.name]))))
   }
 
-  async search(title: string, media: Media) {
-    const x = (await this.get(`/search/${media}`, { query: title })).results[0]
+  /**
+   * 시리즈·영화를 함께 찾고, TMDB 장르로 구분을 정한다.
+   * 같은 이름의 옛 작품을 잡지 않도록 공개일이 우리 날짜와 60일 안(날짜가 없으면 최근 1년)인 것만,
+   * 시리즈는 이름이 똑같으면 새 시즌일 수 있어 날짜와 상관없이 인정한다.
+   */
+  async search(title: string, date: string | null, today: string) {
+    const norm = (s: string) => s.replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
+    const days = (d: string) => Date.parse(d) / 864e5
+    const ok = (r: any) => {
+      if (r.media_type !== 'tv' && r.media_type !== 'movie') return false
+      const d: string = r.first_air_date || r.release_date
+      if (r.media_type === 'tv' && norm(r.name) === norm(title)) return true
+      if (!d) return false
+      return date ? Math.abs(days(d) - days(date)) <= 60 : d >= addDays(today, -365)
+    }
+    let x = (await this.get('/search/multi', { query: title })).results.find(ok)
+    // "신인감독 김연경2", "데블스 플랜 시즌3"는 TMDB에 시즌 번호 없이 한 작품으로 있다
+    const base = title.replace(/\s*(시즌\s*)?\d+$/, '')
+    if (!x && base !== title) x = (await this.get('/search/tv', { query: base })).results.map((r: any) => ({ ...r, media_type: 'tv' })).find((r: any) => norm(r.name) === norm(base))
     if (!x) return null
-    const g: number[] = x.genre_ids ?? []
-    // TMDB 장르로 구분 보정: 애니메이션 16, 리얼리티 10764, 토크 10767
-    const type = g.includes(16) ? '애니메이션' : media === 'tv' && g.some((n) => n === 10764 || n === 10767) ? '예능' : undefined
-    return { id: x.id as number, poster: img(x.poster_path), overview: (x.overview as string) || undefined, type }
+    const media: Media = x.media_type
+    return { id: x.id as number, media, poster: img(x.poster_path), overview: (x.overview as string) || undefined, type: typeOf(media, x.genre_ids) }
+  }
+
+  /** 플랫폼 오리지널 공개 예정 시리즈: 한국 작품 전부 + 해외 작품은 인기 상위 3개 */
+  async upcomingSeries(today: string) {
+    const out: { platform: string; id: number; title: string; type: string; date: string; poster?: string; overview?: string }[] = []
+    for (const [platform, network] of Object.entries(NETWORKS)) {
+      const base = { with_networks: network, 'first_air_date.gte': addDays(today, 1), 'first_air_date.lte': addDays(today, 180) }
+      const [kr, top] = await Promise.all([
+        this.get('/discover/tv', { ...base, with_origin_country: 'KR', sort_by: 'first_air_date.asc' }),
+        this.get('/discover/tv', { ...base, sort_by: 'popularity.desc' }),
+      ])
+      const seen = new Set<number>()
+      for (const x of [...kr.results, ...top.results.slice(0, 3)]) {
+        if (seen.has(x.id) || !x.first_air_date) continue
+        seen.add(x.id)
+        out.push({ platform, id: x.id, title: x.name, type: typeOf('tv', x.genre_ids), date: x.first_air_date, poster: img(x.poster_path), overview: x.overview || undefined })
+      }
+    }
+    return out
   }
 
   async searchMovie(title: string) {
@@ -75,16 +114,23 @@ export class TmdbService {
   async available(today: string): Promise<Work[]> {
     const ids = await this.providerIds()
     const recent = { tv: { 'air_date.gte': addDays(today, -30) }, movie: { 'primary_release_date.gte': addDays(today, -365) } }
+    // 플랫폼 × 구분마다 인기 3개씩: 어떤 필터 조합을 골라도 비지 않게 (5 × 4 = 20회)
+    const KINDS: [Media, Record<string, string>][] = [
+      ['tv', { without_genres: '16,10764,10767' }], // 드라마
+      ['tv', { with_genres: '10764|10767' }], // 예능
+      ['tv', { with_genres: '16' }], // 애니메이션
+      ['movie', { without_genres: '16' }], // 영화
+    ]
     const out: (Work & { pop: number })[] = []
     for (const [platform, pid] of Object.entries(ids)) {
-      for (const media of ['tv', 'movie'] as const) {
-        const r = await this.get(`/discover/${media}`, {
-          watch_region: 'KR', with_watch_providers: pid, with_watch_monetization_types: 'flatrate', sort_by: 'popularity.desc', ...recent[media],
-        })
-        for (const x of r.results.slice(0, media === 'tv' ? 4 : 2)) {
-          const g: number[] = x.genre_ids ?? []
-          const type = g.includes(16) ? '애니메이션' : media === 'movie' ? '영화' : g.some((n) => n === 10764 || n === 10767) ? '예능' : '드라마'
-          out.push({ id: `tmdb-${media}-${x.id}`, title: x.name ?? x.title, platform, type, date: null, poster: img(x.poster_path), pop: x.popularity })
+      for (const [media, genres] of KINDS) {
+        const params = { watch_region: 'KR', with_watch_providers: pid, with_watch_monetization_types: 'flatrate', sort_by: 'popularity.desc', ...genres }
+        let r = await this.get(`/discover/${media}`, { ...params, ...recent[media] })
+        if (!r.results.length) r = await this.get(`/discover/${media}`, params) // 최근 작품이 없으면 기간 없이
+        for (const x of r.results.slice(0, 3)) {
+          // 같은 작품이 여러 플랫폼에 있으면 플랫폼마다 따로 둔다 (id 끝 = 플랫폼 번호)
+          const id = `tmdb-${media}-${x.id}-${PLATFORMS.indexOf(platform as (typeof PLATFORMS)[number])}`
+          out.push({ id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: null, poster: img(x.poster_path), pop: x.popularity })
         }
       }
     }

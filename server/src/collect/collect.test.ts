@@ -4,7 +4,8 @@ import { test } from 'node:test'
 import type { Store } from '../api/dto.js'
 import type { Article } from '../sources/naver-news.service.js'
 import type { ExtractedWork } from '../sources/extract.service.js'
-import { CollectService } from './collect.service.js'
+import { vaguePast } from '../api/home.service.js'
+import { CollectService, workKey } from './collect.service.js'
 
 Object.assign(process.env, { TODAY_OVERRIDE: '2026-10-08', NAVER_CLIENT_ID: 'x', NAVER_CLIENT_SECRET: 'x' })
 delete process.env.TMDB_TOKEN
@@ -46,6 +47,11 @@ test('앞부분이 같고 플랫폼·날짜가 같으면 같은 작품', async (
   await feed('a2', '2026-10-02T00:00:00Z', { ...work('2026-10-13'), title: '라스트 스테이지' })
   await feed('a3', '2026-10-02T00:00:00Z', { ...work('2026-10-20'), title: '라스트' }) // 날짜가 다르면 다른 작품
   assert.deepEqual(state.works.map((w) => [w.title, w.sources.length]), [['라스트 스테이지 : 24H', 2], ['라스트', 1]])
+})
+
+test('시즌 표기가 달라도 같은 작품, 지나간 시기는 공개 예정에서 뺀다', () => {
+  assert.equal(workKey('데블스 플랜 시즌3', '넷플릭스'), workKey('데블스플랜3', '넷플릭스'))
+  assert.deepEqual(['9월 중', '10월 중', '상반기', '하반기', '3분기', '4분기'].map((x) => vaguePast(x, '2026-10-10')), [true, false, true, false, true, false])
 })
 
 test('애매한 날짜로 정확한 날짜를 덮지 않고, 더 최근 기사의 정확한 날짜는 반영한다', async () => {

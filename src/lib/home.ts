@@ -64,6 +64,6 @@ export function useOtt(data: () => HomeData) {
   const platform = ref('전체'), cat = ref('전체')
   const ok = (w: Work) => (platform.value === '전체' || w.platform === platform.value) && (cat.value === '전체' || w.type === cat.value)
   const upcoming = computed(() => data().ott.upcoming.filter(ok).sort(byDate))
-  const available = computed(() => data().ott.available.filter(ok))
+  const available = computed(() => data().ott.available.filter(ok).slice(0, 12))
   return { platform, cat, upcoming, available }
 }

@@ -31,6 +31,7 @@ export interface StoredWork extends Work {
   sources: Source[] // 기사 제목·링크·날짜만. 본문은 저장하지 않는다
   dateFrom?: string // 지금 날짜를 정한 기사의 날짜
   tmdbId?: number | null // null = 찾아봤지만 없음
+  tmdbMedia?: 'movie' | 'tv'
   overview?: string
 }
 

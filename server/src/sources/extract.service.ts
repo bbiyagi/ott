@@ -36,15 +36,19 @@ const kstDate = (iso: string) => new Date(iso).toLocaleDateString('sv-SE', { tim
 const addDays = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
 
 const platformsIn = (s: string) => PLATFORM_RE.filter(([, re]) => re.test(s)).map(([p]) => p)
-const titlesIn = (s: string) =>
-  [...s.matchAll(QUOTE)].map((m) => m[1].replace(/\(가제\)/, '').trim()).filter((t) => t.length >= 2 && !SPEECH.test(t))
+// 작품명이 아닌 것: 일반 명사, 플랫폼 이름이 든 문구, 3글자 이하 영문 약어(HBO 등)
+const GENERIC = /^(애니|드라마|예능|영화|시리즈|오리지널|신작|작품)$/
+const isTitle = (t: string) => t.length >= 2 && !SPEECH.test(t) && !GENERIC.test(t) && !platformsIn(t).length && !/^[A-Z]{1,3}$/.test(t)
+// "필승 원더독스(이하 원더독스)", "나의 작품(가제)" → 괄호 부분 제거
+const titlesIn = (s: string) => [...s.matchAll(QUOTE)].map((m) => m[1].replace(/\s*\([^)]*\)\s*$/, '').trim()).filter(isTitle)
 const sentences = (t: string) => t.split(/(?<=[.!?])\s+|…|\.{3}/).map((s) => s.trim()).filter(Boolean)
 
-function typeOf(text: string) {
-  if (/예능|리얼리티|버라이어티/.test(text)) return '예능'
-  if (/애니메이션/.test(text)) return '애니메이션'
-  if (/영화(?!제)/.test(text) && !/드라마|시리즈/.test(text)) return '영화'
-  return '드라마'
+function typeIn(text: string) {
+  if (/예능|리얼리티|버라이어티|서바이벌/.test(text)) return '예능'
+  if (/애니메이션|애니(?![가-힣])/.test(text)) return '애니메이션'
+  if (/드라마|시리즈/.test(text)) return '드라마'
+  if (/영화(?!제)/.test(text)) return '영화'
+  return null
 }
 
 /** 문장 속 날짜 중 기사 날짜 이후(오늘 공개는 당일 포함), 180일 안의 첫 날짜 */
@@ -82,7 +86,7 @@ export function extract(articles: Article[]): ExtractedWork[] {
     const articlePlatforms = platformsIn(all)
     // 요약 문장에 작품명이 없으면 제목의 작품명을 쓴다. 제목이 공개 소식일 때만
     const headTitle = platformsIn(a.title).length || RELEASE.test(a.title) ? titlesIn(a.title)[0] : undefined
-    const type = typeOf(all)
+    const articleType = typeIn(a.title) ?? typeIn(all) ?? '드라마'
     const found = new Map<string, ExtractedWork>()
     for (const s of sentences(all)) {
       if (!RELEASE.test(s) || PAST.test(s)) continue
@@ -94,7 +98,8 @@ export function extract(articles: Article[]): ExtractedWork[] {
       if (!date && !dateText) continue
       const key = `${title}|${platform}`
       if (found.get(key)?.date) continue // 정확한 날짜를 먼저 찾았으면 유지
-      found.set(key, { article: i, title, platform, type, date, dateText })
+      // 구분은 그 문장 → 기사 제목 → 기사 전체 순. TMDB에서 찾으면 다시 보정된다
+      found.set(key, { article: i, title, platform, type: typeIn(s) ?? articleType, date, dateText })
     }
     out.push(...found.values())
   })
