@@ -21,9 +21,8 @@ const hotMode = ref<HotMode>('soon')
 const hot = computed(() => props.data.hot[hotMode.value])
 const meta = (w: Work) => hotMeta(w, hotMode.value)
 
-const { view, y, m, week, on, months, pct, grid, step, toToday, pickMonth, isToday, isCurMonth, numCls } = useCalendar(() => props.data.events)
+const { view, y, m, week, on, grid, step, toToday, isToday, numCls } = useCalendar(() => props.data.events)
 const calTitle = computed(() => {
-  if (view.value === 'year') return `${y.value}년`
   if (view.value === 'month') return `${y.value}년 ${m.value + 1}월`
   const [s, e] = [week.value[0], week.value[6]]
   return `${s.getMonth() + 1}월 ${s.getDate()}일 – ${e.getMonth() + 1}월 ${e.getDate()}일`
@@ -110,16 +109,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </div>
         </div>
 
-        <div v-if="view === 'year'" class="years">
-          <button v-for="(c, k) in months" :key="k" type="button" class="year-cell" :class="{ cur: isCurMonth(k) }" :aria-label="`${k + 1}월 보기`" @click="pickMonth(k)">
-            <span class="year-name">{{ k + 1 }}월</span>
-            <span class="year-count">{{ c.total }}<small>작품</small></span>
-            <span class="bar"><span :style="{ width: pct(c.total) }"></span></span>
-            <span class="meta">OTT {{ c.ott }} · 극장 {{ c.total - c.ott }}</span>
-          </button>
-        </div>
-
-        <div v-else-if="view === 'month'" class="col8">
+        <div v-if="view === 'month'" class="col8">
           <div class="grid7">
             <span v-for="(n, i) in DOW" :key="n" class="dow" :class="dowCls(i)">{{ n }}</span>
           </div>
@@ -147,7 +137,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             </button>
           </div>
         </div>
-        <p v-if="view !== 'year'" class="cal-note"><span class="news sm">기사</span>{{ NEWS_NOTE }}</p>
+        <p class="cal-note"><span class="news sm">기사</span>{{ NEWS_NOTE }}</p>
       </section>
 
       <section id="ott" v-reveal aria-labelledby="ott-h">
@@ -280,10 +270,6 @@ h3 { font-size: 20px; font-weight: 700; }
 .hot-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.3; }
 
 .tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.years { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-.year-name { font-size: 15px; font-weight: 600; }
-.year-count { font-size: 40px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
-.year-count small { font-size: 14px; font-weight: 500; color: var(--mute); margin-left: 6px; }
 .grid7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
 .dow { padding: 0 10px; font-size: 13px; font-weight: 600; }
 .mcell { display: flex; flex-direction: column; gap: 4px; min-height: 112px; padding: 10px; min-width: 0; border-radius: 12px; background: var(--surf); }

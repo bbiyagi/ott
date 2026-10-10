@@ -7,7 +7,6 @@
   --line: #2A2A30;
   --line-soft: #26262B;
   --line-strong: #3A3A42;
-  --bar: #5A5A62;
   --text: #EDEDEA;
   --sub: #C9C9CE;
   --mute: #8D8D93;
@@ -126,13 +125,6 @@ a.news:hover { color: var(--accent); border-color: var(--accent); }
 .icon-btn { width: 44px; }
 .text-btn { padding: 0 16px; font-size: 14px; font-weight: 600; }
 
-/* 연간 */
-.bar { display: block; height: 4px; border-radius: 2px; background: var(--line); width: 100%; }
-.bar > span { display: block; height: 4px; border-radius: 2px; background: var(--bar); }
-.year-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 20px; min-height: 44px; border-radius: 14px; border: 1px solid transparent; background: var(--surf); text-align: left; }
-.year-cell.cur { border: 1.5px solid var(--accent); }
-.year-cell.cur .year-name { color: var(--accent); }
-.year-cell.cur .bar > span { background: var(--accent); }
 .today-ring { box-shadow: inset 0 0 0 1.5px var(--accent); }
 
 /* OTT 필터 */

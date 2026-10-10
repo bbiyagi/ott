@@ -30,9 +30,8 @@ const hot = computed(() => props.data.hot[hotMode.value])
 const meta = (w: Work) => hotMeta(w, hotMode.value)
 const title = computed(() => ({ hot: hotMode.value === 'soon' ? '곧 공개되는 기대작' : '지금 인기 있는 작품', cal: '공개 일정', ott: 'OTT', theater: '극장' })[screen.value])
 
-const { view, y, m, sel, week, on, months, pct, grid, pick, step, toToday, pickMonth, isToday, isCurMonth, numCls } = useCalendar(() => props.data.events)
+const { view, y, m, sel, week, on, grid, pick, step, toToday, isToday, numCls } = useCalendar(() => props.data.events)
 const calTitle = computed(() => {
-  if (view.value === 'year') return `${y.value}년`
   if (view.value === 'month') return `${y.value}년 ${m.value + 1}월`
   const [s, e] = [week.value[0], week.value[6]]
   return `${s.getMonth() + 1}.${s.getDate()} – ${e.getMonth() + 1}.${e.getDate()}`
@@ -109,15 +108,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </div>
         </div>
 
-        <div v-if="view === 'year'" class="years">
-          <button v-for="(c, k) in months" :key="k" type="button" class="year-cell" :class="{ cur: isCurMonth(k) }" :aria-label="`${k + 1}월 보기`" @click="pickMonth(k)">
-            <span class="year-name">{{ k + 1 }}월</span>
-            <span class="year-count">{{ c.total }}</span>
-            <span class="bar"><span :style="{ width: pct(c.total) }"></span></span>
-          </button>
-        </div>
-
-        <div v-else-if="view === 'month'" class="col4">
+        <div v-if="view === 'month'" class="col4">
           <div class="grid7">
             <span v-for="(n, i) in DOW" :key="n" class="dow" :class="dowCls(i)">{{ n }}</span>
           </div>
@@ -145,7 +136,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           </button>
         </div>
 
-        <div v-if="view !== 'year'" class="col12 day">
+        <div class="col12 day">
           <div class="sub-head">
             <h2 class="h18">{{ longDay(sel) }}</h2>
             <span class="meta">{{ dayItems.length ? `${dayItems.length}개 공개` : '' }}</span>
@@ -285,10 +276,6 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cal-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
 .text-btn.sm { padding: 0 12px; font-size: 13px; }
-.years { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.year-cell { gap: 12px; padding: 16px 14px; }
-.year-name { font-size: 14px; font-weight: 600; }
-.year-count { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
 .grid7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .g2 { gap: 2px; }
 .g4 { gap: 4px; }
