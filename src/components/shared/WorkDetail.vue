@@ -67,6 +67,13 @@ const shortDate = (s: string) => md(s.slice(0, 10))
 <style scoped>
 .detail { padding: 0; border: 0; border-radius: 16px; background: var(--surf); color: var(--text); width: min(640px, calc(100% - 32px)); max-height: 90vh; overflow: auto; }
 .detail::backdrop { background: rgba(0, 0, 0, 0.65); }
+/* 열릴 때: 배경은 서서히 어두워지고 창은 살짝 떠오른다 (모바일은 아래에서 올라온다) */
+.detail[open] { animation: open 0.32s var(--ease); }
+.detail[open]::backdrop { animation: dim 0.32s var(--ease); }
+@keyframes open { from { opacity: 0; transform: translateY(14px) scale(0.985); } }
+@keyframes dim { from { opacity: 0; } }
+.close { transition: background-color 0.2s var(--ease); }
+.close:hover { background: rgba(14, 14, 16, 0.9); }
 .art { position: relative; aspect-ratio: 16/9; background: var(--stripe-lg); }
 .close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: 22px; background: rgba(14, 14, 16, 0.7); font-size: 16px; }
 .body { padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 10px; }
@@ -86,6 +93,8 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; }
 .sources li span { flex: 0 0 auto; }
 @media (max-width: 767px) {
   .detail { width: 100%; max-width: 100%; max-height: 92vh; margin: auto 0 0; border-radius: 16px 16px 0 0; }
+  .detail[open] { animation-name: sheet; }
+  @keyframes sheet { from { transform: translateY(40px); opacity: 0.6; } }
   .body { padding: 16px 20px 28px; }
   h2 { font-size: 22px; }
 }

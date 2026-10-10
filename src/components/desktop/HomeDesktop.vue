@@ -6,6 +6,7 @@ import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
 import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
+import { vReveal } from '../../lib/reveal'
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
 import RefreshButton from '../shared/RefreshButton.vue'
@@ -59,12 +60,15 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <Seg v-model="hotMode" :options="[['soon', '공개 예정'], ['now', '지금 인기']]" label="기대작 구분" />
         </div>
         <div v-if="hot.length" class="hot">
-          <article class="hero lead" :style="bg(hot[0].backdrop ?? hot[0].poster)">
+          <article class="hero lead">
+            <Transition name="xfade">
+              <div :key="hot[0].id" class="hero-img" :style="bg(hot[0].backdrop ?? hot[0].poster)"></div>
+            </Transition>
             <button type="button" class="hit" :aria-label="`${hot[0].title} 자세히 보기`" @click="openDetail(hot[0])"></button>
             <span v-if="!hot[0].backdrop && !hot[0].poster" class="ph-label">still · 16:10</span>
             <div class="shade"></div>
-            <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
-            <div class="lead-info col8">
+            <span :key="`b-${hot[0].id}`" class="hero-badge rise">{{ hotTag(hot[0], hotMode) }}</span>
+            <div :key="`i-${hot[0].id}`" class="lead-info col8 rise">
               <span class="why on-image">{{ hotWhy(hot[0], hotMode) }}</span>
               <span class="lead-title">{{ hot[0].title }}</span>
               <span class="row-chip">
@@ -74,7 +78,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             </div>
           </article>
           <ul class="hot-list">
-            <li v-for="h in hot.slice(1)" :key="h.id" class="card hot-item">
+            <li v-for="(h, i) in hot.slice(1)" :key="h.id" class="card hot-item rise" :style="{ '--i': i + 1 }">
               <button type="button" class="hit" :aria-label="`${h.title} 자세히 보기`" @click="openDetail(h)"></button>
               <span class="ph" :style="bg(h.poster)"></span>
               <div class="hot-body col4">
@@ -92,7 +96,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <p v-else class="empty">아직 정리된 작품이 없어요.</p>
       </section>
 
-      <section id="cal" aria-labelledby="cal-h">
+      <section id="cal" v-reveal aria-labelledby="cal-h">
         <div class="sec-head">
           <h2 id="cal-h" class="h2">{{ calTitle }}</h2>
           <div class="tools">
@@ -145,7 +149,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <p v-if="view !== 'year'" class="cal-note"><span class="news sm">기사</span>{{ NEWS_NOTE }}</p>
       </section>
 
-      <section id="ott" aria-labelledby="ott-h">
+      <section id="ott" v-reveal aria-labelledby="ott-h">
         <div class="sec-head base">
           <h2 id="ott-h" class="h2">OTT</h2>
           <span class="muted t14">{{ total }}개 작품</span>
@@ -166,7 +170,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="meta">기사 기준 예정일 · 변동될 수 있어요</span>
             </div>
             <ul class="ups">
-              <li v-for="u in upcoming" :key="u.id" class="card up">
+              <li v-for="(u, i) in upcoming" :key="u.id" class="card up rise" :style="{ '--i': i }">
                 <button type="button" class="hit" :aria-label="`${u.title} 자세히 보기`" @click="openDetail(u)"></button>
                 <div class="ph" :style="bg(u.poster)"></div>
                 <div class="up-body">
@@ -192,7 +196,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <button v-if="more" type="button" class="all" :aria-expanded="showAll" @click="showAll = !showAll">{{ showAll ? '접기 ↑' : '전체 보기 →' }}</button>
             </div>
             <div class="avail">
-              <button v-for="v in available" :key="v.id" type="button" class="tile" @click="openDetail(v)">
+              <button v-for="(v, i) in available" :key="v.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(v)">
                 <div class="ph poster" :style="bg(v.poster)"><span v-if="!v.poster" class="ph-label">poster</span></div>
                 <span class="t14 b6">{{ v.title }}</span>
                 <span class="meta small" :title="platformTitle(v)">{{ platformLabel(v) }} · {{ v.type }}</span>
@@ -203,13 +207,13 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         </div>
       </section>
 
-      <section id="theater" aria-labelledby="theater-h">
+      <section id="theater" v-reveal aria-labelledby="theater-h">
         <div class="sec-head">
           <h2 id="theater-h" class="h2">극장</h2>
           <Seg v-model="theaterTab" :options="[['now', '상영중'], ['soon', '개봉예정']]" label="극장 구분" />
         </div>
         <div class="movies">
-          <button v-for="mv in movies" :key="mv.id" type="button" class="tile" @click="openDetail(mv)">
+          <button v-for="(mv, i) in movies" :key="mv.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(mv)">
             <div class="ph poster" :style="bg(mv.poster)">
               <span v-if="!mv.poster" class="ph-label">poster</span>
               <span class="badge" :class="{ soon: theaterTab === 'soon' }">{{ theaterTab === 'now' ? '상영중' : dday(mv) }}</span>

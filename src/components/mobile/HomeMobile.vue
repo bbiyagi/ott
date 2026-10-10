@@ -6,6 +6,7 @@ import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
 import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, refreshMsg, refreshing, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
+// 모바일은 탭으로 화면이 바뀌어서 스크롤 등장 대신 화면 전환 때 살짝 떠오르게만 한다 (.rise)
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
 import RefreshButton from '../shared/RefreshButton.vue'
@@ -57,15 +58,18 @@ const movies = computed(() => props.data.theater[theaterTab.value])
     <main>
       <h1>{{ title }}</h1>
 
-      <div v-if="screen === 'hot'" class="col20">
+      <div v-if="screen === 'hot'" class="col20 rise">
         <Seg v-model="hotMode" grid :options="[['soon', '공개 예정'], ['now', '지금 인기']]" label="기대작 구분" />
         <template v-if="hot.length">
-          <article class="hero lead" :style="bg(hiRes(hot[0].poster) ?? hot[0].backdrop)">
+          <article class="hero lead">
+            <Transition name="xfade">
+              <div :key="hot[0].id" class="hero-img" :style="bg(hiRes(hot[0].poster) ?? hot[0].backdrop)"></div>
+            </Transition>
             <button type="button" class="hit" :aria-label="`${hot[0].title} 자세히 보기`" @click="openDetail(hot[0])"></button>
             <span v-if="!hot[0].poster && !hot[0].backdrop" class="ph-label">still</span>
             <div class="shade"></div>
-            <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
-            <div class="lead-info">
+            <span :key="`b-${hot[0].id}`" class="hero-badge rise">{{ hotTag(hot[0], hotMode) }}</span>
+            <div :key="`i-${hot[0].id}`" class="lead-info rise">
               <span class="why on-image">{{ hotWhy(hot[0], hotMode) }}</span>
               <span class="lead-title">{{ hot[0].title }}</span>
               <span class="row-chip">
@@ -75,7 +79,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             </div>
           </article>
           <ul class="list10">
-            <li v-for="h in hot.slice(1)" :key="h.id" class="card hot-item">
+            <li v-for="(h, i) in hot.slice(1)" :key="h.id" class="card hot-item rise" :style="{ '--i': i + 1 }">
               <button type="button" class="hit" :aria-label="`${h.title} 자세히 보기`" @click="openDetail(h)"></button>
               <span class="ph" :style="bg(h.poster)"></span>
               <div class="hot-body col3">
@@ -93,7 +97,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <p v-else class="empty">아직 정리된 작품이 없어요.</p>
       </div>
 
-      <div v-else-if="screen === 'cal'" class="col16">
+      <div v-else-if="screen === 'cal'" class="col16 rise">
         <Seg v-model="view" grid :options="VIEWS" label="보기 단위" />
         <div class="cal-head">
           <span class="cal-title">{{ calTitle }}</span>
@@ -146,7 +150,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <span class="meta">{{ dayItems.length ? `${dayItems.length}개 공개` : '' }}</span>
           </div>
           <ul class="list8">
-            <li v-for="(e, j) in dayItems" :key="j">
+            <li v-for="(e, j) in dayItems" :key="`${sel.getTime()}-${e.id}`" class="rise" :style="{ '--i': j }">
               <button type="button" class="card day-item" @click="openDetail(e)">
                 <span class="ph"></span>
                 <span class="col2">
@@ -164,7 +168,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         </div>
       </div>
 
-      <div v-else-if="screen === 'ott'" class="col28">
+      <div v-else-if="screen === 'ott'" class="col28 rise">
         <div class="col4 bleed">
           <div role="group" aria-label="플랫폼" class="chips hscroll">
             <button v-for="p in PLATFORMS" :key="p" type="button" class="chip" :aria-pressed="platform === p" @click="platform = p">{{ p }}</button>
@@ -180,7 +184,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <span class="meta small">기사 기준 예정일</span>
           </div>
           <ul class="list8">
-            <li v-for="u in upcoming" :key="u.id" class="card up">
+            <li v-for="(u, i) in upcoming" :key="u.id" class="card up rise" :style="{ '--i': i }">
               <button type="button" class="hit" :aria-label="`${u.title} 자세히 보기`" @click="openDetail(u)"></button>
               <div class="ph" :style="bg(u.poster)"></div>
               <div class="col3 grow">
@@ -206,7 +210,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <button v-if="more" type="button" class="all" :aria-expanded="showAll" @click="showAll = !showAll">{{ showAll ? '접기 ↑' : '전체 보기 →' }}</button>
           </div>
           <div class="avail">
-            <button v-for="v in available" :key="v.id" type="button" class="tile" @click="openDetail(v)">
+            <button v-for="(v, i) in available" :key="v.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(v)">
               <div class="ph poster" :style="bg(v.poster)"><span v-if="!v.poster" class="ph-label">poster</span></div>
               <span class="t13">{{ v.title }}</span>
               <span class="meta tiny" :title="platformTitle(v)">{{ platformLabel(v) }}</span>
@@ -216,10 +220,10 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         </div>
       </div>
 
-      <div v-else class="col20">
+      <div v-else class="col20 rise">
         <Seg v-model="theaterTab" grid :options="[['now', '상영중'], ['soon', '개봉예정']]" label="극장 구분" />
         <div class="movies">
-          <button v-for="mv in movies" :key="mv.id" type="button" class="tile" @click="openDetail(mv)">
+          <button v-for="(mv, i) in movies" :key="mv.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(mv)">
             <div class="ph poster" :style="bg(mv.poster)">
               <span v-if="!mv.poster" class="ph-label">poster</span>
               <span class="badge" :class="{ soon: theaterTab === 'soon' }">{{ theaterTab === 'now' ? '상영중' : dday(mv) }}</span>
@@ -288,7 +292,8 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 .g2 { gap: 2px; }
 .g4 { gap: 4px; }
 .dow { text-align: center; font-size: 12px; font-weight: 600; padding: 4px 0; }
-.mc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 52px; padding: 0; border: 0; border-radius: 12px; background: var(--surf); }
+.mc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 52px; padding: 0; border: 0; border-radius: 12px; background: var(--surf); transition: background-color 0.2s var(--ease), transform 0.15s var(--ease); }
+.mc:active { transform: scale(0.95); }
 .mc.blank { background: transparent; }
 .mc[aria-pressed='true'] { background: var(--text); }
 .mc[aria-pressed='true'] .n { color: var(--bg); }
@@ -326,6 +331,6 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 
 .foot { padding-top: 20px; border-top: 1px solid var(--line-soft); font-size: 12px; line-height: 1.6; color: var(--mute); }
 .tabs { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg); border-top: 1px solid var(--line-soft); }
-.tabs button { min-height: 56px; border: 0; background: transparent; font-size: 14px; font-weight: 500; color: var(--mute); }
+.tabs button { min-height: 56px; border: 0; background: transparent; font-size: 14px; font-weight: 500; color: var(--mute); transition: color 0.2s var(--ease), box-shadow 0.25s var(--ease); }
 .tabs button[aria-current='page'] { color: var(--text); font-weight: 700; box-shadow: inset 0 2px 0 var(--accent); }
 </style>

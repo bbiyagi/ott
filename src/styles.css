@@ -68,8 +68,40 @@ a.news:hover { color: var(--accent); border-color: var(--accent); }
 .cal-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mute); }
 .row-chip { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 
-/* 큰 스틸 배너 */
+/* ---- 움직임: 짧고 조용하게. 모두 한 곳의 곡선과 시간을 쓴다 ---- */
+:root { --ease: cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+/* 스크롤로 들어오는 구역 (v-reveal) */
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* 목록이 새로 그려질 때 차례로 (style="--i: 순번") */
+/* backwards: 끝난 뒤에는 transform을 붙잡지 않아 눌림 효과와 겹치지 않는다 */
+.rise { animation: rise 0.5s var(--ease) backwards; animation-delay: calc(min(var(--i, 0), 8) * 45ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* 포스터·카드: 살짝 떠오르고 그림자 */
+.poster, .card > .ph, .hot-item > .ph, .up > .ph { transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), filter 0.35s var(--ease); }
+.tile:hover .poster { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45); filter: brightness(1.06); }
+.card { transition: background-color 0.2s var(--ease); }
+.card:has(> .hit:hover) { background: var(--surf2); }
+.card:has(> .hit:hover) > .ph { transform: scale(1.04); filter: brightness(1.06); }
+
+/* 누를 때 아주 살짝 눌리는 느낌 */
+.chip, .cat, .seg button, .icon-btn, .text-btn, .more-btn, .act, .tile { transition: transform 0.15s var(--ease), background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease); }
+.chip:active, .seg button:active, .icon-btn:active, .text-btn:active, .more-btn:active, .act:active, .tile:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* 큰 스틸 배너: 이미지는 안쪽 층에 두고 바뀔 때 겹쳐서 넘어간다 */
 .hero { position: relative; overflow: hidden; border-radius: 16px; background: var(--stripe-lg); }
+.hero-img { position: absolute; inset: 0; transition: transform 1.4s var(--ease); }
+.hero:has(> .hit:hover) .hero-img { transform: scale(1.03); }
+.xfade-enter-active, .xfade-leave-active { transition: opacity 0.5s var(--ease); }
+.xfade-enter-from, .xfade-leave-to { opacity: 0; }
 .hero > .ph-label { position: absolute; top: 14px; left: 16px; font-size: 12px; }
 .shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(14,14,16,.92) 0%, rgba(14,14,16,.55) 38%, rgba(14,14,16,0) 70%); }
 .hero-badge { position: absolute; top: 16px; right: 16px; background: var(--accent); color: var(--bg); font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 8px; }
