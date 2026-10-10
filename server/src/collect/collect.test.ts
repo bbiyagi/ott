@@ -1,10 +1,10 @@
 // 작품 병합 규칙 확인: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { Store } from '../api/dto.js'
+import type { Store, Work } from '../api/dto.js'
 import type { Article } from '../sources/naver-news.service.js'
 import type { ExtractedWork } from '../sources/extract.service.js'
-import { vaguePast } from '../api/home.service.js'
+import { group, vaguePast } from '../api/home.service.js'
 import { CollectService, workKey } from './collect.service.js'
 
 Object.assign(process.env, { TODAY_OVERRIDE: '2026-10-08', NAVER_CLIENT_ID: 'x', NAVER_CLIENT_SECRET: 'x' })
@@ -52,6 +52,20 @@ test('앞부분이 같고 플랫폼·날짜가 같으면 같은 작품', async (
 test('시즌 표기가 달라도 같은 작품, 지나간 시기는 공개 예정에서 뺀다', () => {
   assert.equal(workKey('데블스 플랜 시즌3', '넷플릭스'), workKey('데블스플랜3', '넷플릭스'))
   assert.deepEqual(['9월 중', '10월 중', '상반기', '하반기', '3분기', '4분기'].map((x) => vaguePast(x, '2026-10-10')), [true, false, true, false, true, false])
+})
+
+test('여러 플랫폼의 같은 작품은 하나로, 대표는 TMDB 날짜 쪽', () => {
+  const w = (platform: string, via: 'news' | 'tmdb', title = '100일의 거짓말'): Work => ({ id: platform, title, platform, type: '드라마', date: '2026-10-10', via })
+  const g = group([w('넷플릭스', 'news'), w('웨이브', 'tmdb'), w('쿠팡플레이', 'news', '100일의 거짓말 '), w('티빙', 'news', '다른 작품')])
+  assert.deepEqual(g.map((x) => [x.title, x.platform, x.platforms]), [['100일의 거짓말', '웨이브', ['웨이브', '넷플릭스', '쿠팡플레이']], ['다른 작품', '티빙', ['티빙']]])
+})
+
+test('TMDB 날짜는 기사로 덮지 않는다', async () => {
+  const { state, feed } = setup()
+  await feed('a1', '2026-10-01T00:00:00Z', work('2026-10-20'))
+  state.works[0].dateBy = 'tmdb'
+  await feed('a2', '2026-10-05T00:00:00Z', work('2026-10-25'))
+  assert.equal(state.works[0].date, '2026-10-20')
 })
 
 test('애매한 날짜로 정확한 날짜를 덮지 않고, 더 최근 기사의 정확한 날짜는 반영한다', async () => {

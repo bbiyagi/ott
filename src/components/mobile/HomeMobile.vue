@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, PLATFORMS, bg, dday, hotMeta, hotTag, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
 import LikeButton from '../shared/LikeButton.vue'
@@ -58,7 +58,10 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div class="shade"></div>
               <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
               <div class="lead-info">
-                <span class="lead-meta">{{ meta(hot[0]) }}</span>
+                <span class="row-chip">
+                  <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
+                  <span v-if="hot[0].via === 'news'" class="news on-image" :title="NEWS_NOTE">기사 기준</span>
+                </span>
                 <span class="lead-title">{{ hot[0].title }}</span>
               </div>
             </div>
@@ -69,9 +72,12 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="ph" :style="bg(h.poster)"></span>
               <div class="hot-body">
                 <div class="col3">
-                  <span class="tag">{{ hotTag(h, hotMode) }}</span>
+                  <span class="row-chip">
+                    <span class="tag">{{ hotTag(h, hotMode) }}</span>
+                    <span v-if="h.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
+                  </span>
                   <span class="hot-title">{{ h.title }}</span>
-                  <span class="meta small">{{ meta(h) }}</span>
+                  <span class="meta small" :title="platformTitle(h)">{{ meta(h) }}</span>
                 </div>
                 <LikeButton :work="h" :mode="hotMode" />
               </div>
@@ -117,6 +123,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <span><i></i>OTT</span>
             <span><i class="th"></i>극장</span>
           </div>
+          <p class="cal-note"><span class="news sm">기사</span>{{ NEWS_NOTE }}</p>
         </div>
 
         <div v-else class="grid7 g4">
@@ -137,10 +144,13 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <a :href="e.source ?? '#'" class="card day-item">
                 <span class="ph"></span>
                 <span class="col2">
-                  <span class="t16">{{ e.title }}</span>
-                  <span class="meta">{{ e.platform }} · {{ e.type }}</span>
+                  <span class="row-chip">
+                    <span class="t16">{{ e.title }}</span>
+                    <span v-if="e.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
+                  </span>
+                  <span class="meta" :title="platformTitle(e)">{{ platformLabel(e) }} · {{ e.type }}</span>
                 </span>
-                <span class="src">출처 ↗</span>
+                <span class="src">{{ e.via === 'news' ? '기사' : e.via === 'tmdb' ? 'TMDB' : '출처' }} ↗</span>
               </a>
             </li>
           </ul>
@@ -167,12 +177,15 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <li v-for="u in upcoming" :key="u.id" class="card up">
               <div class="ph" :style="bg(u.poster)"></div>
               <div class="col3 grow">
-                <span class="t15">{{ u.title }}</span>
-                <span class="meta small">{{ u.platform }} · {{ u.type }} · {{ when(u) }}</span>
+                <span class="row-chip">
+                  <span class="t15">{{ u.title }}</span>
+                  <span v-if="u.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
+                </span>
+                <span class="meta small" :title="platformTitle(u)">{{ platformLabel(u) }} · {{ u.type }} · {{ when(u) }}</span>
               </div>
               <div class="up-side">
                 <span class="dday">{{ dday(u) }}</span>
-                <a :href="u.source ?? '#'" target="_blank" rel="noopener" class="src">출처 ↗</a>
+                <a :href="u.source ?? '#'" target="_blank" rel="noopener" class="src">{{ u.via === 'tmdb' ? 'TMDB' : '기사' }} ↗</a>
               </div>
             </li>
           </ul>
@@ -188,7 +201,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <a v-for="v in available" :key="v.id" href="#" class="tile">
               <div class="ph poster" :style="bg(v.poster)"><span v-if="!v.poster" class="ph-label">poster</span></div>
               <span class="t13">{{ v.title }}</span>
-              <span class="meta tiny">{{ v.platform }}</span>
+              <span class="meta tiny" :title="platformTitle(v)">{{ platformLabel(v) }}</span>
             </a>
           </div>
           <p v-if="!available.length" class="empty">조건에 맞는 작품이 없어요.</p>

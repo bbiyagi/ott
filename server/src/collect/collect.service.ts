@@ -107,20 +107,22 @@ export class CollectService {
     // "라스트 스테이지"와 "라스트 스테이지 : 24H"처럼 앞부분이 같고 플랫폼·날짜도 같으면 같은 작품
     const w = s.works.find((x) => x.key === key) ?? s.works.find((x) =>
       x.platform === it.platform && date && x.date === date && (x.key.startsWith(base) || base.startsWith(x.key.split('|')[0])))
+    const by = src.title === 'TMDB' ? 'tmdb' : 'news'
     if (!w) {
       const nw: StoredWork = {
-        id: hash(key, 12), key, title, platform: it.platform, type: it.type,
-        date, dateText: date ? undefined : it.dateText ?? undefined, status: 'upcoming', sources: [src], dateFrom: src.date,
+        id: hash(key, 12), key, title, platform: it.platform, type: it.type, date, dateText: date ? undefined : it.dateText ?? undefined,
+        status: 'upcoming', sources: [src], dateFrom: src.date, dateBy: by,
       }
       s.works.push(nw)
       report.newWorks++
       return nw
     }
     if (!w.sources.some((x) => x.link === src.link)) w.sources.push(src)
-    // 더 최근 기사의 정확한 날짜를 우선. 애매한 날짜로 정확한 날짜를 덮지 않는다
-    if (date && (!w.date || src.date >= (w.dateFrom ?? ''))) {
+    // TMDB 날짜는 기사로 덮지 않는다. 기사끼리는 더 최근 기사의 정확한 날짜 우선, 애매한 날짜로 정확한 날짜를 덮지 않는다
+    const locked = w.dateBy === 'tmdb' && by === 'news'
+    if (date && !locked && (!w.date || by === 'tmdb' || src.date >= (w.dateFrom ?? ''))) {
       if (w.date !== date) report.updated++
-      Object.assign(w, { date, dateText: undefined, dateFrom: src.date })
+      Object.assign(w, { date, dateText: undefined, dateFrom: src.date, dateBy: by })
       if (w.status === 'released' && date > t) w.status = 'upcoming'
     } else if (!date && !w.date && it.dateText) {
       w.dateText = it.dateText

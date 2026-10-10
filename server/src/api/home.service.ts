@@ -13,6 +13,21 @@ export function vaguePast(text: string | undefined, today: string) {
   return text === '상반기' && m > 6
 }
 
+const norm = (t: string) => t.replace(/시즌|season/gi, '').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
+
+/** 같은 작품이 여러 플랫폼에 있으면 하나로 묶고 platforms에 모두 담는다 (화면: "넷플릭스 +2"). 대표는 TMDB 날짜가 있는 쪽 */
+export function group<T extends Work | CalEvent>(list: T[], byDate = false): T[] {
+  const map = new Map<string, T>()
+  for (const w of list) {
+    const k = norm(w.title) + (byDate ? `|${w.date}` : '')
+    const g = map.get(k)
+    if (!g) map.set(k, { ...w, platforms: [w.platform] })
+    else if (g.via === 'news' && w.via === 'tmdb') map.set(k, { ...w, platforms: [w.platform, ...g.platforms!.filter((p) => p !== w.platform)] })
+    else if (!g.platforms!.includes(w.platform)) g.platforms!.push(w.platform)
+  }
+  return [...map.values()]
+}
+
 @Injectable()
 export class HomeService {
   constructor(private store: StoreService) {}
@@ -25,26 +40,29 @@ export class HomeService {
 
     const out = (w: Work | StoredWork): Work => ({
       id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, dateText: w.dateText,
-      genre: w.genre, poster: w.poster, source: 'sources' in w ? w.sources.at(-1)?.link : w.source, likes: likes[w.id] ?? 0,
+      genre: w.genre, poster: w.poster, likes: likes[w.id] ?? 0,
+      ...('sources' in w
+        ? { source: (w.sources.filter((x) => x.title !== 'TMDB').at(-1) ?? w.sources.at(-1))?.link, via: w.dateBy ?? 'news' }
+        : { source: w.source }),
     })
 
     // 규칙 추출이라 잘못 뽑힌 제목이 섞일 수 있다. TMDB에 있거나 기사 2개 이상에 나온 작품만 보여 준다
     const works = s.works.filter((w) => w.tmdbId || w.sources.length >= 2)
-    const upcoming = works.filter((w) => w.status === 'upcoming' && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out)
+    const upcoming = group(works.filter((w) => w.status === 'upcoming' && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out))
     const soon = upcoming
       .filter((w) => w.date && w.date >= t && w.date <= addDays(t, 30))
       .sort((a, b) => b.likes! - a.likes! || a.date!.localeCompare(b.date!))
       .slice(0, 4)
     const tn = s.theater.now.map(out)
-    const oa = s.ottAvailable.map(out)
+    const oa = group(s.ottAvailable.map(out))
     // 지금 인기: 극장 1·2위와 OTT 인기 1·2위를 번갈아
     const now: Work[] = []
     for (const [w, rank] of [[tn[0], '상영중 1위'], [oa[0], 'OTT 1위'], [tn[1], '상영중 2위'], [oa[1], 'OTT 2위']] as const) {
       if (w) now.push({ ...w, rank })
     }
 
-    const ev = (w: Work): CalEvent => ({ date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source })
-    const events = [...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev)
+    const ev = (w: Work): CalEvent => ({ date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source, via: w.via })
+    const events = group([...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev), true)
 
     return {
       hot: { soon, now },

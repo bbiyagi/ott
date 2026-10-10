@@ -11,9 +11,11 @@ export interface Work {
   genre?: string
   source?: string
   poster?: string
+  platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
+  via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
 }
 
-export interface CalEvent { date: string; platform: string; type: string; title: string; source?: string }
+export interface CalEvent { date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
 
 export interface HomeData {
   hot: { soon: Work[]; now: Work[] }
@@ -30,6 +32,7 @@ export interface StoredWork extends Work {
   status: 'upcoming' | 'released'
   sources: Source[] // 기사 제목·링크·날짜만. 본문은 저장하지 않는다
   dateFrom?: string // 지금 날짜를 정한 기사의 날짜
+  dateBy?: 'news' | 'tmdb' // 지금 날짜의 출처. TMDB 날짜는 기사로 덮지 않는다
   tmdbId?: number | null // null = 찾아봤지만 없음
   tmdbMedia?: 'movie' | 'tv'
   overview?: string

@@ -13,9 +13,11 @@ export interface Work {
   genre?: string
   source?: string // 출처 기사 링크
   poster?: string
+  platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
+  via?: 'news' | 'tmdb' // news = 기사에서 모은 날짜라 정확하지 않을 수 있음
 }
 
-export interface CalEvent { date: string; platform: string; type: string; title: string; source?: string }
+export interface CalEvent { date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
 
 export interface HomeData {
   hot: { soon: Work[]; now: Work[] }
@@ -65,12 +67,12 @@ export function mock(): HomeData {
     },
     ott: {
       upcoming: [
-        w('ou1', '[영화 제목]', '쿠팡플레이', '영화', 1),
-        w('ou2', '[시리즈 제목]', '디즈니+', '드라마', 1),
-        w('ou3', '[예능 제목]', '넷플릭스', '예능', 2),
-        w('ou4', '[드라마 제목]', '티빙', '드라마', 6),
-        w('ou5', '[드라마 제목]', '웨이브', '드라마', 9),
-        w('ou6', '[애니메이션 제목]', '넷플릭스', '애니메이션', null, { dateText: `${month}월 중` }),
+        w('ou1', '[영화 제목]', '쿠팡플레이', '영화', 1, { via: 'news' }),
+        w('ou2', '[시리즈 제목]', '디즈니+', '드라마', 1, { via: 'tmdb' }),
+        w('ou3', '[예능 제목]', '넷플릭스', '예능', 2, { via: 'news', platforms: ['넷플릭스', '티빙'] }),
+        w('ou4', '[드라마 제목]', '티빙', '드라마', 6, { via: 'tmdb' }),
+        w('ou5', '[드라마 제목]', '웨이브', '드라마', 9, { via: 'news' }),
+        w('ou6', '[애니메이션 제목]', '넷플릭스', '애니메이션', null, { dateText: `${month}월 중`, via: 'news' }),
       ],
       available: [
         w('oa1', '[작품 제목]', '넷플릭스', '드라마', null),

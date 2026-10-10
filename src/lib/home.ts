@@ -50,10 +50,17 @@ export const when = (w: Work) => (w.date ? fmt(w.date) : w.dateText ?? '미정')
 export const byDate = (a: Work, b: Work) => (a.date ?? '9999').localeCompare(b.date ?? '9999')
 
 export const hotTag = (w: Work, mode: HotMode) => (mode === 'now' ? w.rank ?? '' : dday(w))
+/** 같은 작품이 여러 플랫폼에 있으면 "넷플릭스 +2" */
+export const platformLabel = (w: { platform: string; platforms?: string[] }) =>
+  (w.platforms?.length ?? 1) > 1 ? `${w.platform} +${w.platforms!.length - 1}` : w.platform
+/** 마우스를 올리면 보이는 전체 플랫폼 */
+export const platformTitle = (w: { platform: string; platforms?: string[] }) => (w.platforms ?? [w.platform]).join(', ')
+export const NEWS_NOTE = '기사에서 모은 날짜라 정확하지 않을 수 있어요'
+
 const hotDate = (w: Work, mode: HotMode) =>
   mode === 'soon' ? when(w) : w.date ? `${md(w.date)} ${w.platform === '극장' ? '개봉' : '공개'}` : ''
-/** 티빙 · 드라마 · 10.14 (수) */
-export const hotMeta = (w: Work, mode: HotMode) => [w.platform, w.type, hotDate(w, mode)].filter(Boolean).join(' · ')
+/** 티빙 +1 · 드라마 · 10.14 (수) */
+export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, hotDate(w, mode)].filter(Boolean).join(' · ')
 
 export const bg = (url?: string) => (url ? { background: `center/cover no-repeat url("${url}")` } : undefined)
 
@@ -62,7 +69,8 @@ export const CATS = ['전체', '영화', '드라마', '예능', '애니메이션
 
 export function useOtt(data: () => HomeData) {
   const platform = ref('전체'), cat = ref('전체')
-  const ok = (w: Work) => (platform.value === '전체' || w.platform === platform.value) && (cat.value === '전체' || w.type === cat.value)
+  const ok = (w: Work) =>
+    (platform.value === '전체' || (w.platforms ?? [w.platform]).includes(platform.value)) && (cat.value === '전체' || w.type === cat.value)
   const upcoming = computed(() => data().ott.upcoming.filter(ok).sort(byDate))
   const available = computed(() => data().ott.available.filter(ok).slice(0, 12))
   return { platform, cat, upcoming, available }
