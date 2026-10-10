@@ -67,14 +67,15 @@ export class TmdbService {
     return (r.results?.KR?.flatrate ?? []).some((p: any) => p.provider_id === providerId)
   }
 
-  /** 플랫폼별 지금 볼 수 있는 인기작 (JustWatch 제공 정보) */
-  async available(): Promise<Work[]> {
+  /** 플랫폼별 지금 볼 수 있는 인기작 (JustWatch 제공 정보). 오래된 장수 시리즈가 섞이지 않게 최근 작품만 */
+  async available(today: string): Promise<Work[]> {
     const ids = await this.providerIds()
+    const recent = { tv: { 'air_date.gte': addDays(today, -30) }, movie: { 'primary_release_date.gte': addDays(today, -365) } }
     const out: (Work & { pop: number })[] = []
     for (const [platform, pid] of Object.entries(ids)) {
       for (const media of ['tv', 'movie'] as const) {
         const r = await this.get(`/discover/${media}`, {
-          watch_region: 'KR', with_watch_providers: pid, with_watch_monetization_types: 'flatrate', sort_by: 'popularity.desc',
+          watch_region: 'KR', with_watch_providers: pid, with_watch_monetization_types: 'flatrate', sort_by: 'popularity.desc', ...recent[media],
         })
         for (const x of r.results.slice(0, media === 'tv' ? 4 : 2)) {
           const g: number[] = x.genre_ids ?? []

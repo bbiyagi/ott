@@ -48,7 +48,7 @@ export class CollectService {
     for (const w of s.works) {
       if (w.status === 'upcoming' && w.date && w.date <= addDays(t, -7)) { w.status = 'released'; report.released++ }
     }
-    await step('OTT 서비스 중', has('tmdb'), async () => { s.ottAvailable = await this.tmdb.available() })
+    await step('OTT 서비스 중', has('tmdb'), async () => { s.ottAvailable = await this.tmdb.available(t) })
     await step('극장', has('kobis') || has('tmdb'), async () => { s.theater = await this.theater(t) })
 
     await this.store.save(s)
