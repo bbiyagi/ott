@@ -7,6 +7,7 @@ import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platform
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
+import RefreshButton from '../shared/RefreshButton.vue'
 
 const props = defineProps<{ data: HomeData }>()
 
@@ -40,6 +41,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <a v-for="[id, name] in NAV" :key="id" :href="`#${id}`" :aria-current="active === id ? 'true' : undefined" @click="active = id">{{ name }}</a>
         </nav>
         <div class="search">
+          <RefreshButton :updated-at="data.updatedAt" />
           <label for="q" class="sr-only">작품 검색</label>
           <input id="q" type="search" placeholder="작품 검색">
         </div>
@@ -234,7 +236,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
 nav { display: flex; gap: 28px; flex-wrap: wrap; }
 nav a { padding: 16px 0; font-size: 15px; font-weight: 600; text-decoration: none; color: var(--mute); }
 nav a[aria-current='true'] { color: var(--text); }
-.search { flex: 1 1 200px; display: flex; justify-content: flex-end; }
+.search { flex: 1 1 200px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; min-width: 0; }
 .search input { width: 100%; max-width: 260px; height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surf); color: var(--text); font: inherit; font-size: 14px; }
 .search input::placeholder { color: var(--mute); }
 

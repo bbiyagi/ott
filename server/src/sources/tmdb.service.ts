@@ -11,10 +11,11 @@ const NAMES: Record<string, RegExp> = {
   티빙: /tving/i,
   '디즈니+': /^disney\s*plus$/i,
   쿠팡플레이: /coupang/i,
-  웨이브: /wavve/i,
 }
-// 플랫폼 오리지널 시리즈의 TMDB 네트워크 id (실제 작품의 네트워크에서 확인: 오징어 게임, 환승연애, 무빙, 소년시대, 피의 게임)
-const NETWORKS: Record<string, number> = { 넷플릭스: 213, 티빙: 3897, '디즈니+': 2739, 쿠팡플레이: 5169, 웨이브: 3357 }
+// 플랫폼 오리지널 시리즈의 TMDB 네트워크 id (실제 작품의 네트워크에서 확인: 오징어 게임, 환승연애, 무빙, 소년시대)
+const NETWORKS: Record<string, number> = { 넷플릭스: 213, 티빙: 3897, '디즈니+': 2739, 쿠팡플레이: 5169 }
+// 시즌당 회차가 이보다 많으면 매주 하는 장수 프로그램 (런닝맨·아는 형님·해외 장수 드라마). 기안장 같은 시즌제 예능은 10회 안팎
+const LONG_RUN_EPISODES = 20
 // 포스터는 w500, 큰 배너용 가로 스틸(backdrop)은 w1280
 const img = (p?: string | null, size = 'w500') => (p ? `https://image.tmdb.org/t/p/${size}${p}` : undefined)
 const pics = (x: any) => ({ poster: img(x.poster_path), backdrop: img(x.backdrop_path, 'w1280') })
@@ -53,6 +54,17 @@ export class TmdbService {
     })())
   }
 
+  private longRuns = new Map<number, Promise<boolean>>()
+  /** 시리즈가 장수 프로그램인지: 시즌당 평균 회차 > 20 */
+  longRun(tvId: number) {
+    let p = this.longRuns.get(tvId)
+    if (!p) {
+      p = this.get(`/tv/${tvId}`).then((d) => (d.number_of_episodes ?? 0) / Math.max(1, d.number_of_seasons ?? 1) > LONG_RUN_EPISODES)
+      this.longRuns.set(tvId, p)
+    }
+    return p
+  }
+
   private genreMap() {
     return (this.genres ??= this.get('/genre/movie/list').then((r) => new Map(r.genres.map((g: any) => [g.id, g.name]))))
   }
@@ -78,7 +90,8 @@ export class TmdbService {
     if (!x && base !== title) x = (await this.get('/search/tv', { query: base })).results.map((r: any) => ({ ...r, media_type: 'tv' })).find((r: any) => norm(r.name) === norm(base))
     if (!x) return null
     const media: Media = x.media_type
-    return { id: x.id as number, media, ...pics(x), overview: (x.overview as string) || undefined, type: typeOf(media, x.genre_ids) }
+    const longRun = media === 'tv' ? await this.longRun(x.id) : false
+    return { id: x.id as number, media, ...pics(x), overview: (x.overview as string) || undefined, type: typeOf(media, x.genre_ids), longRun }
   }
 
   /** 플랫폼 오리지널 공개 예정 시리즈: 한국 작품 전부 + 해외 작품은 인기 상위 3개 */
@@ -116,27 +129,34 @@ export class TmdbService {
    * 플랫폼별 지금 볼 수 있는 인기작 (JustWatch 제공 정보). 오래된 장수 시리즈가 섞이지 않게 최근 작품만.
    * rank = "넷플릭스 예능 인기 1위"처럼 그 플랫폼·구분 안에서의 TMDB 인기 순위
    */
-  async available(today: string): Promise<(Work & { pop: number; ko: boolean })[]> {
+  async available(today: string): Promise<(Work & { pop: number; ko: boolean; longRun: boolean })[]> {
     const ids = await this.providerIds()
     const recent = { tv: { 'air_date.gte': addDays(today, -30) }, movie: { 'primary_release_date.gte': addDays(today, -365) } }
-    // 플랫폼 × 구분마다 인기 3개씩: 어떤 필터 조합을 골라도 비지 않게 (5 × 4 = 20회)
+    // 플랫폼 × 구분마다 인기작: 어떤 필터 조합을 골라도 비지 않게 (4 × 5 = 20회 + 시리즈 회차 조회)
     const KINDS: [Media, string, Record<string, string>][] = [
       ['tv', '드라마', { without_genres: '16,10764,10767' }],
+      // 티빙처럼 해외 드라마가 위를 차지하는 플랫폼도 메인에 한국 드라마가 오르도록 따로
+      ['tv', '한국 드라마', { without_genres: '16,10764,10767', with_original_language: 'ko' }],
       ['tv', '예능', { with_genres: '10764|10767' }],
       ['tv', '애니메이션', { with_genres: '16' }],
       ['movie', '영화', { without_genres: '16' }],
     ]
-    const out: (Work & { pop: number; ko: boolean })[] = []
+    const out: (Work & { pop: number; ko: boolean; longRun: boolean })[] = []
     for (const [platform, pid] of Object.entries(ids)) {
       for (const [media, label, genres] of KINDS) {
         const params = { watch_region: 'KR', with_watch_providers: pid, with_watch_monetization_types: 'flatrate', sort_by: 'popularity.desc', ...genres }
         let r = await this.get(`/discover/${media}`, { ...params, ...recent[media] })
         if (!r.results.length) r = await this.get(`/discover/${media}`, params) // 최근 작품이 없으면 기간 없이
-        r.results.slice(0, 3).forEach((x: any, i: number) => {
+        // 5개씩: 메인에서 장수 프로그램을 빼고도 고를 작품이 남도록
+        for (const [i, x] of (r.results as any[]).slice(0, 5).entries()) {
           // 같은 작품이 여러 플랫폼에 있으면 플랫폼마다 따로 둔다 (id 끝 = 플랫폼 번호)
           const id = `tmdb-${media}-${x.id}-${PLATFORMS.indexOf(platform as (typeof PLATFORMS)[number])}`
-          out.push({ id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: null, ...pics(x), rank: `${platform} ${label} 인기 ${i + 1}위`, pop: x.popularity, ko: x.original_language === 'ko' })
-        })
+          out.push({
+            id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: null, ...pics(x),
+            rank: `${platform} ${label} 인기 ${i + 1}위`, pop: x.popularity, ko: x.original_language === 'ko',
+            longRun: media === 'tv' ? await this.longRun(x.id) : false,
+          })
+        }
       }
     }
     const seen = new Set<string>()

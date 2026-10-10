@@ -4,7 +4,7 @@ import { TODAY, addDays, iso } from '../lib/date'
 export interface Work {
   id: string
   title: string
-  platform: string // 넷플릭스·티빙·디즈니+·쿠팡플레이·웨이브·극장
+  platform: string // 넷플릭스·티빙·디즈니+·쿠팡플레이·극장
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. "10월 중"처럼 애매하면 null + dateText
   dateText?: string
@@ -25,6 +25,7 @@ export interface HomeData {
   ott: { upcoming: Work[]; available: Work[] }
   theater: { now: Work[]; soon: Work[] }
   events: CalEvent[]
+  updatedAt?: string // 마지막 수집 시각
 }
 
 const d = (n: number) => iso(addDays(TODAY, n))
@@ -33,7 +34,7 @@ const w = (id: string, title: string, platform: string, type: string, day: numbe
 
 // 시안의 evs(): 날짜마다 0~3개 작품을 고르게 흩뿌린다
 function events(): CalEvent[] {
-  const P = ['넷플릭스', '티빙', '디즈니+', '쿠팡플레이', '웨이브', '극장']
+  const P = ['넷플릭스', '티빙', '디즈니+', '쿠팡플레이', '극장']
   const T = ['드라마', '예능', '영화', '애니메이션']
   const out: CalEvent[] = []
   const y0 = TODAY.getFullYear()
@@ -42,7 +43,7 @@ function events(): CalEvent[] {
     const h = (m * 31 + day * 17 + (y % 10) * 5) % 11
     const n = h < 3 ? 0 : h < 7 ? 1 : h < 9 ? 2 : 3
     for (let i = 0; i < n; i++) {
-      const p = P[(m + day + i * 2) % 6], t = p === '극장' ? '영화' : T[(m * 3 + day + i) % 4]
+      const p = P[(m + day + i * 2) % P.length], t = p === '극장' ? '영화' : T[(m * 3 + day + i) % 4]
       out.push({ date: iso(x), platform: p, type: t, title: `[${t} 제목]` })
     }
   }
@@ -62,8 +63,8 @@ export function mock(): HomeData {
       now: [
         w('hn1', '[드라마 제목]', '넷플릭스', '드라마', null, { rank: '넷플릭스 드라마 인기 1위' }),
         w('hn2', '[예능 제목]', '티빙', '예능', null, { rank: '티빙 예능 인기 1위' }),
-        w('hn3', '[애니메이션 제목]', '디즈니+', '애니메이션', null, { rank: '디즈니+ 애니메이션 인기 1위' }),
-        w('hn4', '[영화 제목]', '웨이브', '영화', null, { rank: '웨이브 영화 인기 1위' }),
+        w('hn3', '[시리즈 제목]', '디즈니+', '드라마', null, { rank: '디즈니+ 드라마 인기 1위' }),
+        w('hn4', '[예능 제목]', '쿠팡플레이', '예능', null, { rank: '쿠팡플레이 예능 인기 1위' }),
       ],
     },
     ott: {
@@ -72,7 +73,7 @@ export function mock(): HomeData {
         w('ou2', '[시리즈 제목]', '디즈니+', '드라마', 1, { via: 'tmdb' }),
         w('ou3', '[예능 제목]', '넷플릭스', '예능', 2, { via: 'news', platforms: ['넷플릭스', '티빙'] }),
         w('ou4', '[드라마 제목]', '티빙', '드라마', 6, { via: 'tmdb' }),
-        w('ou5', '[드라마 제목]', '웨이브', '드라마', 9, { via: 'news' }),
+        w('ou5', '[드라마 제목]', '쿠팡플레이', '드라마', 9, { via: 'news' }),
         w('ou6', '[애니메이션 제목]', '넷플릭스', '애니메이션', null, { dateText: `${month}월 중`, via: 'news' }),
       ],
       available: [
@@ -81,7 +82,7 @@ export function mock(): HomeData {
         w('oa3', '[작품 제목]', '디즈니+', '영화', null),
         w('oa4', '[작품 제목]', '쿠팡플레이', '드라마', null),
         w('oa5', '[작품 제목]', '넷플릭스', '영화', null),
-        w('oa6', '[작품 제목]', '웨이브', '애니메이션', null),
+        w('oa6', '[작품 제목]', '디즈니+', '애니메이션', null),
       ],
     },
     theater: {

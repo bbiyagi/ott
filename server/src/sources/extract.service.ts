@@ -5,7 +5,7 @@ import type { Article } from './naver-news.service.js'
 // ponytail: 문장 규칙이라 놓치거나 잘못 뽑는 기사가 있다. 같은 작품을 다룬 기사가 여러 개라
 // 병합 단계에서 대부분 보정된다. 정확도가 모자라면 이 파일만 바꾸면 된다.
 
-export const PLATFORMS = ['넷플릭스', '티빙', '디즈니+', '쿠팡플레이', '웨이브'] as const
+export const PLATFORMS = ['넷플릭스', '티빙', '디즈니+', '쿠팡플레이'] as const
 export type Platform = (typeof PLATFORMS)[number]
 
 export interface ExtractedWork {
@@ -22,7 +22,6 @@ const PLATFORM_RE: [Platform, RegExp][] = [
   ['티빙', /티빙|tving/i],
   ['디즈니+', /디즈니\s*(\+|플러스)|disney\s*\+/i],
   ['쿠팡플레이', /쿠팡\s*플레이|쿠플/],
-  ['웨이브', /(?<![가-힣A-Za-z])웨이브|wavve/i],
 ]
 const RELEASE = /공개|첫\s*방송|첫방|선보인|스트리밍|출격/
 // 이미 공개된 작품·순위 기사

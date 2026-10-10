@@ -8,13 +8,14 @@ import { KobisService } from '../sources/kobis.service.js'
 import { NaverNewsService } from '../sources/naver-news.service.js'
 import { TmdbService, type Media } from '../sources/tmdb.service.js'
 
-// 플랫폼 × 구분별로 검색해야 예능·영화·애니 기사도 잡힌다 (5 × 9 + 1 = 46회, 네이버 하루 한도 25,000회)
-const QUERY_NAMES = ['넷플릭스', '티빙', '디즈니플러스', '쿠팡플레이', '웨이브']
+// 플랫폼 × 구분별로 검색해야 예능·영화·애니 기사도 잡힌다 (4 × 9 + 1 = 37회, 네이버 하루 한도 25,000회)
+const QUERY_NAMES = ['넷플릭스', '티빙', '디즈니플러스', '쿠팡플레이']
 const SUFFIXES = ['공개 예정', '공개일', '오리지널 공개', '드라마 공개', '예능 공개', '영화 공개', '애니 공개', '첫 공개', '첫 방송']
 const KEYWORDS = [...QUERY_NAMES.flatMap((p) => SUFFIXES.map((s) => `${p} ${s}`)), 'OTT 신작 공개']
 const PER_RUN = 3000 // 한 번에 처리할 새 기사 수 (규칙 추출이라 비용 없음)
 const SEEN_MAX = 20000 // 링크 대신 짧은 해시로 저장
 const ENRICH_MAX = 150 // 한 번에 TMDB에서 찾아볼 작품 수
+const REFRESH_GAP = 10 * 60_000 // 새로고침 버튼 최소 간격
 
 export interface Report { articles: number; newArticles: number; extracted: number; tmdbSeries: number; newWorks: number; updated: number; released: number; skipped: string[] }
 interface Candidate { title: string; platform: string; type: string; date: string | null; dateText?: string | null }
@@ -36,6 +37,22 @@ export class CollectService {
     private tmdb: TmdbService,
     private kobis: KobisService,
   ) {}
+
+  private running?: Promise<Report>
+
+  /**
+   * 화면의 새로고침 버튼용. 누구나 누를 수 있어서 마지막 수집 뒤 10분 안에는 다시 돌리지 않고,
+   * 이미 돌고 있으면 그 결과를 같이 기다린다.
+   * ponytail: 서버 인스턴스 하나 기준. 여러 인스턴스가 동시에 돌 수 있지만 10분 제한으로 충분하다
+   */
+  async refresh(): Promise<Report | { waitMinutes: number }> {
+    if (this.running) return this.running
+    const { collectedAt } = await this.store.load()
+    const left = collectedAt ? REFRESH_GAP - (Date.now() - Date.parse(collectedAt)) : 0
+    if (left > 0) return { waitMinutes: Math.ceil(left / 60_000) }
+    this.running = this.run().finally(() => (this.running = undefined))
+    return this.running
+  }
 
   async run(): Promise<Report> {
     const s = await this.store.load()
@@ -134,7 +151,7 @@ export class CollectService {
     for (const w of s.works.filter((w) => w.tmdbId === undefined).slice(0, ENRICH_MAX)) {
       const hit = await this.tmdb.search(w.title, w.date, t)
       w.tmdbId = hit?.id ?? null
-      if (hit) Object.assign(w, { tmdbMedia: hit.media, poster: hit.poster, backdrop: hit.backdrop, overview: hit.overview, type: hit.type })
+      if (hit) Object.assign(w, { tmdbMedia: hit.media, poster: hit.poster, backdrop: hit.backdrop, overview: hit.overview, type: hit.type, longRun: hit.longRun })
     }
     const ids = await this.tmdb.providerIds()
     for (const w of s.works) {

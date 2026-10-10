@@ -16,6 +16,33 @@ export async function loadHome() {
   }
 }
 
+// 새로고침 버튼: 서버가 기사·TMDB·KOBIS를 다시 불러온 뒤(1~2분) 화면 데이터를 다시 받는다
+export const refreshing = ref(false)
+export const refreshMsg = ref('')
+export async function refresh() {
+  refreshing.value = true
+  refreshMsg.value = ''
+  try {
+    const r = await fetch('/api/refresh', { method: 'POST' })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const j: { waitMinutes?: number; newWorks?: number; skipped?: string[] } = await r.json()
+    if (j.waitMinutes) refreshMsg.value = `방금 업데이트했어요. ${j.waitMinutes}분 뒤에 다시 할 수 있어요`
+    else refreshMsg.value = `업데이트 완료 · 새 작품 ${j.newWorks ?? 0}개` + (j.skipped?.length ? ` · 일부 실패 ${j.skipped.length}건` : '')
+    await loadHome()
+  } catch {
+    refreshMsg.value = '서버에 연결하지 못했어요'
+  } finally {
+    refreshing.value = false
+  }
+}
+
+/** 10.10 22:55 업데이트 */
+export const updatedLabel = (iso?: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getMonth() + 1}.${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 업데이트`
+}
+
 export const dday = (w: Work) => {
   if (!w.date) return '예정'
   const n = Math.round((parse(w.date).getTime() - TODAY.getTime()) / 864e5)
@@ -42,7 +69,7 @@ export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, mo
 
 export const bg = (url?: string) => (url ? { background: `center/cover no-repeat url("${url}")` } : undefined)
 
-export const PLATFORMS = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠팡플레이', '웨이브']
+export const PLATFORMS = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠팡플레이']
 export const CATS = ['전체', '영화', '드라마', '예능', '애니메이션']
 
 export function useOtt(data: () => HomeData) {

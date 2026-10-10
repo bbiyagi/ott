@@ -12,6 +12,7 @@ export interface Work {
   source?: string
   poster?: string // 세로 포스터 (w500)
   backdrop?: string // 가로 스틸 (w1280), 큰 배너용
+  longRun?: boolean // 시즌당 20회 넘는 장수 프로그램 (메인에서 뺀다)
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
 }
@@ -23,6 +24,7 @@ export interface HomeData {
   ott: { upcoming: Work[]; available: Work[] }
   theater: { now: Work[]; soon: Work[] }
   events: CalEvent[]
+  updatedAt?: string // 마지막 수집 시각
 }
 
 // ---- 저장소 ----
@@ -42,7 +44,7 @@ export interface StoredWork extends Work {
 export interface Store {
   works: StoredWork[]
   seen: string[] // 이미 처리한 기사 링크
-  ottAvailable: (Work & { pop?: number; ko?: boolean })[] // pop = TMDB 인기 점수, ko = 한국어 작품
+  ottAvailable: (Work & { pop?: number; ko?: boolean })[] // pop = TMDB 인기 점수, ko = 한국어 작품, longRun은 Work에
   theater: { now: Work[]; soon: Work[] }
   collectedAt?: string
 }

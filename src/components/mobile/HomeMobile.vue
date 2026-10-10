@@ -3,10 +3,11 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, refreshMsg, refreshing, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
+import RefreshButton from '../shared/RefreshButton.vue'
 
 // 모바일 큰 배너는 세로 포스터를 더 큰 크기(w780)로
 const hiRes = (url?: string) => url?.replace('/w500/', '/w780/')
@@ -46,7 +47,10 @@ const movies = computed(() => props.data.theater[theaterTab.value])
   <div class="m">
     <header>
       <span class="logo">{{ BRAND }}<span class="accent">.</span></span>
-      <span class="meta">{{ longDay(TODAY) }}</span>
+      <div class="head-right">
+        <span v-if="!refreshing && !refreshMsg" class="meta">{{ longDay(TODAY) }}</span>
+        <RefreshButton :updated-at="data.updatedAt" compact />
+      </div>
     </header>
 
     <main>
@@ -236,7 +240,8 @@ const movies = computed(() => props.data.theater[theaterTab.value])
 <style scoped>
 .m { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 0 20px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; }
-.logo { font-size: 20px; }
+.logo { font-size: 20px; flex: 0 0 auto; }
+.head-right { display: flex; align-items: center; gap: 8px; min-width: 0; margin-left: 12px; }
 main { flex: 1 1 auto; padding: 8px 20px 32px; display: flex; flex-direction: column; gap: 24px; }
 h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; }
 .h18 { font-size: 18px; font-weight: 700; }

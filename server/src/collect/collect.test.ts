@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import type { Store, Work } from '../api/dto.js'
 import type { Article } from '../sources/naver-news.service.js'
 import type { ExtractedWork } from '../sources/extract.service.js'
-import { group, vaguePast } from '../api/home.service.js'
+import { group, main, vaguePast } from '../api/home.service.js'
 import { CollectService, workKey } from './collect.service.js'
 
 Object.assign(process.env, { TODAY_OVERRIDE: '2026-10-08', NAVER_CLIENT_ID: 'x', NAVER_CLIENT_SECRET: 'x' })
@@ -58,6 +58,12 @@ test('여러 플랫폼의 같은 작품은 하나로, 대표는 TMDB 날짜 쪽'
   const w = (platform: string, via: 'news' | 'tmdb', title = '100일의 거짓말'): Work => ({ id: platform, title, platform, type: '드라마', date: '2026-10-10', via })
   const g = group([w('넷플릭스', 'news'), w('웨이브', 'tmdb'), w('쿠팡플레이', 'news', '100일의 거짓말 '), w('티빙', 'news', '다른 작품')])
   assert.deepEqual(g.map((x) => [x.title, x.platform, x.platforms]), [['100일의 거짓말', '웨이브', ['웨이브', '넷플릭스', '쿠팡플레이']], ['다른 작품', '티빙', ['티빙']]])
+})
+
+test('메인에는 드라마와 시즌제 예능만, 장수 프로그램은 뺀다', () => {
+  assert.deepEqual([
+    { type: '드라마' }, { type: '예능', longRun: false }, { type: '예능', longRun: true }, { type: '드라마', longRun: true }, { type: '영화' }, { type: '애니메이션' },
+  ].map(main), [true, true, false, false, false, false])
 })
 
 test('TMDB 날짜는 기사로 덮지 않는다', async () => {
