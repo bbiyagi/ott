@@ -1,43 +1,19 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { mock, type HomeData, type Work } from '../data/mock'
-import { TODAY, fmt, md, parse } from './date'
+import { TODAY, fmt, parse } from './date'
 
 export type HotMode = 'soon' | 'now'
 
 export const home = ref<HomeData | null>(null)
-const fromServer = ref(false)
 
 export async function loadHome() {
   try {
     const r = await fetch('/api/home')
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
     home.value = await r.json()
-    fromServer.value = true
   } catch {
     home.value = mock() // 서버가 꺼져 있거나 수집 전이면 시안 예시 데이터
   }
-}
-
-// 기대돼요/추천해요: 누른 상태는 브라우저에, 숫자는 서버에
-const KEY = 'nextscene.liked'
-const saved = (): string[] => { try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] } }
-export const liked = reactive(new Set<string>(saved()))
-const counts = reactive(new Map<string, number>())
-export const likeCount = (w: Work) => counts.get(w.id) ?? w.likes ?? 0
-
-export async function toggleLike(w: Work) {
-  const on = !liked.has(w.id)
-  if (on) liked.add(w.id)
-  else liked.delete(w.id)
-  try { localStorage.setItem(KEY, JSON.stringify([...liked])) } catch { /* 저장 못 해도 화면은 동작 */ }
-  counts.set(w.id, Math.max(0, likeCount(w) + (on ? 1 : -1)))
-  if (!fromServer.value) return
-  try {
-    const r = await fetch(`/api/likes/${encodeURIComponent(w.id)}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }),
-    })
-    if (r.ok) counts.set(w.id, (await r.json()).likes)
-  } catch { /* 숫자는 다음 새로고침 때 맞춰진다 */ }
 }
 
 export const dday = (w: Work) => {
@@ -49,7 +25,6 @@ export const when = (w: Work) => (w.date ? fmt(w.date) : w.dateText ?? '미정')
 // 날짜 있는 작품 먼저, "10월 중" 같은 작품은 맨 뒤
 export const byDate = (a: Work, b: Work) => (a.date ?? '9999').localeCompare(b.date ?? '9999')
 
-export const hotTag = (w: Work, mode: HotMode) => (mode === 'now' ? w.rank ?? '' : dday(w))
 /** 같은 작품이 여러 플랫폼에 있으면 "넷플릭스 +2" */
 export const platformLabel = (w: { platform: string; platforms?: string[] }) =>
   (w.platforms?.length ?? 1) > 1 ? `${w.platform} +${w.platforms!.length - 1}` : w.platform
@@ -57,10 +32,13 @@ export const platformLabel = (w: { platform: string; platforms?: string[] }) =>
 export const platformTitle = (w: { platform: string; platforms?: string[] }) => (w.platforms ?? [w.platform]).join(', ')
 export const NEWS_NOTE = '기사에서 모은 날짜라 정확하지 않을 수 있어요'
 
-const hotDate = (w: Work, mode: HotMode) =>
-  mode === 'soon' ? when(w) : w.date ? `${md(w.date)} ${w.platform === '극장' ? '개봉' : '공개'}` : ''
+/** 배너 뱃지: 공개 예정은 D-day, 지금 인기는 "인기 1위" */
+export const hotTag = (w: Work, mode: HotMode) => (mode === 'now' ? w.rank?.match(/인기 \d+위$/)?.[0] ?? '' : dday(w))
+/** 왜 여기 있는지: "티빙 드라마 기대작 · 기사 9건" / "넷플릭스 예능 인기 1위" */
+export const hotWhy = (w: Work, mode: HotMode) =>
+  mode === 'now' ? w.rank ?? '' : `${platformLabel(w)} ${w.type} 기대작${w.buzz ? ` · 기사 ${w.buzz}건` : ''}`
 /** 티빙 +1 · 드라마 · 10.14 (수) */
-export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, hotDate(w, mode)].filter(Boolean).join(' · ')
+export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, mode === 'soon' ? when(w) : ''].filter(Boolean).join(' · ')
 
 export const bg = (url?: string) => (url ? { background: `center/cover no-repeat url("${url}")` } : undefined)
 

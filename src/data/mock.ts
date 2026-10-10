@@ -8,11 +8,12 @@ export interface Work {
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. "10월 중"처럼 애매하면 null + dateText
   dateText?: string
-  likes?: number
-  rank?: string // 지금 인기: "상영중 1위", "OTT 1위"
+  rank?: string // 지금 인기: "넷플릭스 예능 인기 1위"
+  buzz?: number // 기대작: 이 작품을 다룬 기사 수
   genre?: string
   source?: string // 출처 기사 링크
-  poster?: string
+  poster?: string // 세로 포스터
+  backdrop?: string // 가로 스틸 (큰 배너)
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // news = 기사에서 모은 날짜라 정확하지 않을 수 있음
 }
@@ -53,16 +54,16 @@ export function mock(): HomeData {
   return {
     hot: {
       soon: [
-        w('hs1', '[드라마 제목]', '티빙', '드라마', 6, { likes: 2841 }),
-        w('hs2', '[시리즈 제목]', '디즈니+', '드라마', 1, { likes: 2310 }),
-        w('hs3', '[영화 제목]', '넷플릭스', '영화', 9, { likes: 1976 }),
-        w('hs4', '[예능 제목]', '쿠팡플레이', '예능', 15, { likes: 1428 }),
+        w('hs1', '[드라마 제목]', '티빙', '드라마', 6, { buzz: 9, via: 'news' }),
+        w('hs2', '[시리즈 제목]', '디즈니+', '드라마', 1, { buzz: 6, via: 'tmdb' }),
+        w('hs3', '[영화 제목]', '넷플릭스', '영화', 9, { buzz: 4, via: 'news' }),
+        w('hs4', '[예능 제목]', '쿠팡플레이', '예능', 15, { buzz: 2, via: 'news' }),
       ],
       now: [
-        w('hn1', '[영화 제목]', '극장', '영화', -7, { likes: 5120, rank: '상영중 1위' }),
-        w('hn2', '[드라마 제목]', '넷플릭스', '드라마', -5, { likes: 4388, rank: 'OTT 1위' }),
-        w('hn3', '[영화 제목]', '극장', '영화', -14, { likes: 3902, rank: '상영중 2위' }),
-        w('hn4', '[예능 제목]', '티빙', '예능', -6, { likes: 3175, rank: 'OTT 2위' }),
+        w('hn1', '[드라마 제목]', '넷플릭스', '드라마', null, { rank: '넷플릭스 드라마 인기 1위' }),
+        w('hn2', '[예능 제목]', '티빙', '예능', null, { rank: '티빙 예능 인기 1위' }),
+        w('hn3', '[애니메이션 제목]', '디즈니+', '애니메이션', null, { rank: '디즈니+ 애니메이션 인기 1위' }),
+        w('hn4', '[영화 제목]', '웨이브', '영화', null, { rank: '웨이브 영화 인기 1위' }),
       ],
     },
     ott: {

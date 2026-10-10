@@ -94,7 +94,7 @@ export class CollectService {
     const now = new Date().toISOString()
     for (const x of list) {
       const w = this.merge(s, x, { title: 'TMDB', link: `https://www.themoviedb.org/tv/${x.id}`, date: now }, t, report)
-      if (w) Object.assign(w, { tmdbId: x.id, tmdbMedia: 'tv', type: x.type, poster: x.poster ?? w.poster, overview: x.overview ?? w.overview })
+      if (w) Object.assign(w, { tmdbId: x.id, tmdbMedia: 'tv', type: x.type, poster: x.poster ?? w.poster, backdrop: x.backdrop ?? w.backdrop, overview: x.overview ?? w.overview })
     }
   }
 
@@ -134,7 +134,7 @@ export class CollectService {
     for (const w of s.works.filter((w) => w.tmdbId === undefined).slice(0, ENRICH_MAX)) {
       const hit = await this.tmdb.search(w.title, w.date, t)
       w.tmdbId = hit?.id ?? null
-      if (hit) Object.assign(w, { tmdbMedia: hit.media, poster: hit.poster, overview: hit.overview, type: hit.type })
+      if (hit) Object.assign(w, { tmdbMedia: hit.media, poster: hit.poster, backdrop: hit.backdrop, overview: hit.overview, type: hit.type })
     }
     const ids = await this.tmdb.providerIds()
     for (const w of s.works) {

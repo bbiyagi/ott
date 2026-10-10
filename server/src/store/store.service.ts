@@ -29,20 +29,6 @@ export class StoreService {
     else await this.writeFile('store.json', s)
   }
 
-  async likes(): Promise<Record<string, number>> {
-    if (this.redis) return (await this.redis.hgetall<Record<string, number>>('likes')) ?? {}
-    return (await this.readFile<Record<string, number>>('likes.json')) ?? {}
-  }
-
-  async like(id: string, delta: number): Promise<number> {
-    if (this.redis) return Math.max(0, await this.redis.hincrby('likes', id, delta))
-    // ponytail: 파일은 동시 요청에 약하다. 로컬 개발용이라 그대로 둔다
-    const all = await this.likes()
-    all[id] = Math.max(0, (all[id] ?? 0) + delta)
-    await this.writeFile('likes.json', all)
-    return all[id]
-  }
-
   private async readFile<T>(name: string): Promise<T | null> {
     try { return JSON.parse(await readFile(`${DIR}/${name}`, 'utf8')) } catch { return null }
   }

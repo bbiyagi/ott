@@ -53,6 +53,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 
 /* 기사 기준 표시 */
 .news { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 5px; font-size: 11px; font-weight: 600; color: var(--mute); white-space: nowrap; flex: 0 0 auto; cursor: help; }
+a.news { text-decoration: none; cursor: pointer; }
+a.news:hover { color: var(--accent); border-color: var(--accent); }
 .news.sm { height: 16px; padding: 0 4px; font-size: 10px; margin-right: 4px; vertical-align: 1px; }
 .news.on-image { background: rgba(14,14,16,.6); color: var(--sub); }
 .cal-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mute); }
@@ -64,10 +66,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(14,14,16,.92) 0%, rgba(14,14,16,.55) 38%, rgba(14,14,16,0) 70%); }
 .hero-badge { position: absolute; top: 16px; right: 16px; background: var(--accent); color: var(--bg); font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 8px; }
 
-/* 기대돼요 / 추천해요 */
-.like { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 1px solid var(--line-strong); background: transparent; }
-.like.glass { background: rgba(14,14,16,.5); }
-.like[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+/* 기대작·인기 이유: "티빙 드라마 기대작 · 기사 9건" */
+.why { font-size: 13px; font-weight: 600; color: var(--sub); }
 
 /* 탭 묶음 */
 .seg { display: flex; gap: 4px; background: var(--surf); padding: 4px; border-radius: 12px; }

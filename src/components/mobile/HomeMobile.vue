@@ -3,10 +3,13 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
-import LikeButton from '../shared/LikeButton.vue'
+import NewsBadge from '../shared/NewsBadge.vue'
+
+// 모바일 큰 배너는 세로 포스터를 더 큰 크기(w780)로
+const hiRes = (url?: string) => url?.replace('/w500/', '/w780/')
 
 const props = defineProps<{ data: HomeData }>()
 
@@ -52,34 +55,30 @@ const movies = computed(() => props.data.theater[theaterTab.value])
       <div v-if="screen === 'hot'" class="col20">
         <Seg v-model="hotMode" grid :options="[['soon', '공개 예정'], ['now', '지금 인기']]" label="기대작 구분" />
         <template v-if="hot.length">
-          <article class="col12">
-            <div class="hero lead" :style="bg(hot[0].poster)">
-              <span v-if="!hot[0].poster" class="ph-label">still</span>
-              <div class="shade"></div>
-              <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
-              <div class="lead-info">
-                <span class="row-chip">
-                  <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
-                  <span v-if="hot[0].via === 'news'" class="news on-image" :title="NEWS_NOTE">기사 기준</span>
-                </span>
-                <span class="lead-title">{{ hot[0].title }}</span>
-              </div>
+          <article class="hero lead" :style="bg(hiRes(hot[0].poster) ?? hot[0].backdrop)">
+            <span v-if="!hot[0].poster && !hot[0].backdrop" class="ph-label">still</span>
+            <div class="shade"></div>
+            <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
+            <div class="lead-info">
+              <span class="why on-image">{{ hotWhy(hot[0], hotMode) }}</span>
+              <span class="lead-title">{{ hot[0].title }}</span>
+              <span class="row-chip">
+                <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
+                <NewsBadge :w="hot[0]" on-image />
+              </span>
             </div>
-            <LikeButton :work="hot[0]" :mode="hotMode" />
           </article>
           <ul class="list10">
             <li v-for="h in hot.slice(1)" :key="h.id" class="card hot-item">
               <span class="ph" :style="bg(h.poster)"></span>
-              <div class="hot-body">
-                <div class="col3">
-                  <span class="row-chip">
-                    <span class="tag">{{ hotTag(h, hotMode) }}</span>
-                    <span v-if="h.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
-                  </span>
-                  <span class="hot-title">{{ h.title }}</span>
+              <div class="hot-body col3">
+                <span class="tag">{{ hotTag(h, hotMode) }}</span>
+                <span class="hot-title">{{ h.title }}</span>
+                <span class="why small">{{ hotWhy(h, hotMode) }}</span>
+                <span class="row-chip">
                   <span class="meta small" :title="platformTitle(h)">{{ meta(h) }}</span>
-                </div>
-                <LikeButton :work="h" :mode="hotMode" />
+                  <NewsBadge :w="h" />
+                </span>
               </div>
             </li>
           </ul>
@@ -146,7 +145,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                 <span class="col2">
                   <span class="row-chip">
                     <span class="t16">{{ e.title }}</span>
-                    <span v-if="e.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
+                    <NewsBadge :w="e" plain />
                   </span>
                   <span class="meta" :title="platformTitle(e)">{{ platformLabel(e) }} · {{ e.type }}</span>
                 </span>
@@ -179,7 +178,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div class="col3 grow">
                 <span class="row-chip">
                   <span class="t15">{{ u.title }}</span>
-                  <span v-if="u.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
+                  <NewsBadge :w="u" />
                 </span>
                 <span class="meta small" :title="platformTitle(u)">{{ platformLabel(u) }} · {{ u.type }} · {{ when(u) }}</span>
               </div>
@@ -263,7 +262,9 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 .lead-title { font-size: 28px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.2; }
 .hot-item { display: flex; gap: 14px; padding: 12px; }
 .hot-item > .ph { flex: 0 0 76px; aspect-ratio: 2/3; }
-.hot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.hot-body { flex: 1; justify-content: center; }
+.why.on-image { color: var(--accent); }
+.why.small { font-size: 12px; }
 .hot-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.3; }
 
 .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

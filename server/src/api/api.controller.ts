@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Post, UnauthorizedException } from '@nestjs/common'
+import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common'
 import { env, missingKeys, today } from '../config.js'
 import { CollectService } from '../collect/collect.service.js'
 import { StoreService } from '../store/store.service.js'
@@ -11,13 +11,6 @@ export class ApiController {
   @Get('home')
   getHome() {
     return this.home.build()
-  }
-
-  /** 기대돼요/추천해요. on=false면 취소 */
-  @Post('likes/:id')
-  async like(@Param('id') id: string, @Body() body: { on?: boolean }) {
-    if (!/^[\w-]{1,40}$/.test(id)) throw new BadRequestException()
-    return { likes: await this.store.like(id, body?.on === false ? -1 : 1) }
   }
 
   @Get('health')

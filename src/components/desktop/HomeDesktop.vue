@@ -3,10 +3,10 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useOtt, when, type HotMode } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import Seg from '../shared/Seg.vue'
-import LikeButton from '../shared/LikeButton.vue'
+import NewsBadge from '../shared/NewsBadge.vue'
 
 const props = defineProps<{ data: HomeData }>()
 
@@ -56,34 +56,30 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <Seg v-model="hotMode" :options="[['soon', '공개 예정'], ['now', '지금 인기']]" label="기대작 구분" />
         </div>
         <div v-if="hot.length" class="hot">
-          <article class="hero lead" :style="bg(hot[0].poster)">
-            <span v-if="!hot[0].poster" class="ph-label">still · 16:10</span>
+          <article class="hero lead" :style="bg(hot[0].backdrop ?? hot[0].poster)">
+            <span v-if="!hot[0].backdrop && !hot[0].poster" class="ph-label">still · 16:10</span>
             <div class="shade"></div>
             <span class="hero-badge">{{ hotTag(hot[0], hotMode) }}</span>
-            <div class="lead-info">
-              <div class="col8">
-                <span class="row-chip">
-                  <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
-                  <span v-if="hot[0].via === 'news'" class="news on-image" :title="NEWS_NOTE">기사 기준</span>
-                </span>
-                <span class="lead-title">{{ hot[0].title }}</span>
-              </div>
-              <LikeButton :work="hot[0]" :mode="hotMode" glass />
+            <div class="lead-info col8">
+              <span class="why on-image">{{ hotWhy(hot[0], hotMode) }}</span>
+              <span class="lead-title">{{ hot[0].title }}</span>
+              <span class="row-chip">
+                <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
+                <NewsBadge :w="hot[0]" on-image />
+              </span>
             </div>
           </article>
           <ul class="hot-list">
             <li v-for="h in hot.slice(1)" :key="h.id" class="card hot-item">
               <span class="ph" :style="bg(h.poster)"></span>
-              <div class="hot-body">
-                <div class="col4">
-                  <span class="row-chip">
-                    <span class="tag">{{ hotTag(h, hotMode) }}</span>
-                    <span v-if="h.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
-                  </span>
-                  <span class="hot-title">{{ h.title }}</span>
+              <div class="hot-body col4">
+                <span class="tag">{{ hotTag(h, hotMode) }}</span>
+                <span class="hot-title">{{ h.title }}</span>
+                <span class="why">{{ hotWhy(h, hotMode) }}</span>
+                <span class="row-chip">
                   <span class="meta" :title="platformTitle(h)">{{ meta(h) }}</span>
-                </div>
-                <LikeButton :work="h" :mode="hotMode" />
+                  <NewsBadge :w="h" />
+                </span>
               </div>
             </li>
           </ul>
@@ -170,7 +166,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                 <div class="up-body">
                   <span class="row-chip">
                     <span class="up-title">{{ u.title }}</span>
-                    <span v-if="u.via === 'news'" class="news" :title="NEWS_NOTE">기사 기준</span>
+                    <NewsBadge :w="u" />
                   </span>
                   <span class="meta" :title="platformTitle(u)">{{ platformLabel(u) }} · {{ u.type }} · {{ when(u) }}</span>
                 </div>
@@ -261,13 +257,14 @@ h3 { font-size: 20px; font-weight: 700; }
 
 .hot { display: flex; flex-wrap: wrap; gap: 20px; }
 .lead { flex: 2 1 560px; min-width: 0; aspect-ratio: 16/10; }
-.lead-info { position: absolute; left: 28px; right: 28px; bottom: 26px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.lead-info { position: absolute; left: 28px; right: 28px; bottom: 26px; }
+.why.on-image { color: var(--accent); font-size: 14px; }
 .lead-meta { font-size: 14px; color: var(--sub); }
 .lead-title { font-size: clamp(28px, 3.4vw, 44px); font-weight: 800; letter-spacing: -1px; line-height: 1.15; }
 .hot-list { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .hot-item { display: flex; gap: 16px; padding: 14px; }
 .hot-item > .ph { flex: 0 0 84px; aspect-ratio: 2/3; }
-.hot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.hot-body { flex: 1; justify-content: center; }
 .hot-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.3; }
 
 .tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }

@@ -6,11 +6,12 @@ export interface Work {
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. 애매하면 null + dateText
   dateText?: string
-  likes?: number
-  rank?: string
+  rank?: string // 지금 인기: "넷플릭스 예능 인기 1위"
+  buzz?: number // 기대작: 이 작품을 다룬 기사 수
   genre?: string
   source?: string
-  poster?: string
+  poster?: string // 세로 포스터 (w500)
+  backdrop?: string // 가로 스틸 (w1280), 큰 배너용
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
 }
@@ -41,7 +42,7 @@ export interface StoredWork extends Work {
 export interface Store {
   works: StoredWork[]
   seen: string[] // 이미 처리한 기사 링크
-  ottAvailable: Work[]
+  ottAvailable: (Work & { pop?: number; ko?: boolean })[] // pop = TMDB 인기 점수, ko = 한국어 작품
   theater: { now: Work[]; soon: Work[] }
   collectedAt?: string
 }
