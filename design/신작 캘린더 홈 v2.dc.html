@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+body{margin:0;background:#0E0E10}
+a{color:#EDEDEA}a:hover{color:#FF6A2B}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #FF6A2B;outline-offset:2px}
+input::placeholder{color:#8D8D93}
+</style>
+</helmet>
+<div style="background:#0E0E10;color:#EDEDEA;font-family:'Pretendard Variable',Pretendard,'Noto Sans KR',sans-serif;min-height:100vh;font-feature-settings:'tnum'">
+
+<header style="position:sticky;top:0;z-index:5;background:#0E0E10;border-bottom:1px solid #26262B">
+<div style="max-width:1240px;margin:0 auto;padding:0 32px;min-height:68px;display:flex;flex-wrap:wrap;align-items:center;gap:0 40px">
+<a href="#" style="font-size:22px;font-weight:800;letter-spacing:-0.5px;text-decoration:none;color:#EDEDEA">곧개봉<span style="color:{{accent}}">.</span></a>
+<nav aria-label="주 메뉴" style="display:flex;gap:28px;flex-wrap:wrap">
+<a href="#hot" style="padding:16px 0;font-size:15px;font-weight:600;text-decoration:none">기대작</a>
+<a href="#cal" style="padding:16px 0;font-size:15px;font-weight:600;color:#8D8D93;text-decoration:none">캘린더</a>
+<a href="#ott" style="padding:16px 0;font-size:15px;font-weight:600;color:#8D8D93;text-decoration:none">OTT</a>
+<a href="#theater" style="padding:16px 0;font-size:15px;font-weight:600;color:#8D8D93;text-decoration:none">극장</a>
+</nav>
+<div style="flex:1 1 200px;display:flex;justify-content:flex-end">
+<label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">작품 검색</label>
+<input id="q" type="search" placeholder="작품 검색" style="width:100%;max-width:260px;height:44px;box-sizing:border-box;padding:0 16px;border-radius:10px;border:1px solid #2A2A30;background:#17171A;color:#EDEDEA;font-family:inherit;font-size:14px">
+</div>
+</div>
+</header>
+
+<main style="max-width:1240px;margin:0 auto;padding:48px 32px 96px;display:flex;flex-direction:column;gap:96px">
+
+<section id="hot" aria-labelledby="hot-h" style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-size:14px;font-weight:600;color:{{accent}}">10월 8일 목요일</span>
+<h1 id="hot-h" style="margin:0;font-size:clamp(34px,5vw,56px);font-weight:800;letter-spacing:-1.5px;line-height:1.1">{{hotTitle}}</h1>
+</div>
+<div role="tablist" aria-label="기대작 구분" style="display:flex;gap:4px;background:#17171A;padding:4px;border-radius:12px">
+<button type="button" role="tab" aria-selected="{{hotSoonSel}}" onClick="{{pickHotSoon}}" style="{{hotSoonStyle}}">공개 예정</button>
+<button type="button" role="tab" aria-selected="{{hotNowSel}}" onClick="{{pickHotNow}}" style="{{hotNowStyle}}">지금 인기</button>
+</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:20px">
+<article style="flex:2 1 560px;min-width:0;position:relative;aspect-ratio:16/10;border-radius:16px;overflow:hidden;background:repeating-linear-gradient(135deg,#1C1C20 0 10px,#222227 10px 20px)">
+<span style="position:absolute;top:14px;left:16px;font-size:12px;color:#8D8D93;font-family:ui-monospace,monospace">still · 16:10</span>
+<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(14,14,16,0.92) 0%,rgba(14,14,16,0.55) 38%,rgba(14,14,16,0) 70%)"></div>
+<span style="position:absolute;top:16px;right:16px;background:{{accent}};color:#0E0E10;font-size:14px;font-weight:700;padding:6px 12px;border-radius:8px">{{lead.dday}}</span>
+<div style="position:absolute;left:28px;right:28px;bottom:26px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+<span style="font-size:14px;color:#C9C9CE">{{lead.platform}} · {{lead.type}} · {{lead.date}}</span>
+<span style="font-size:clamp(28px,3.4vw,44px);font-weight:800;letter-spacing:-1px;line-height:1.15">{{lead.title}}</span>
+</div>
+<button type="button" aria-pressed="{{lead.on}}" onClick="{{lead.toggle}}" style="{{lead.btnStyle}}"><span>{{lead.btnLabel}}</span><span>{{lead.count}}</span></button>
+</div>
+</article>
+<ul style="flex:1 1 320px;min-width:0;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{rest}}" as="h" hint-placeholder-count="3">
+<li style="display:flex;gap:16px;padding:14px;border-radius:14px;background:#17171A">
+<span style="flex:0 0 84px;aspect-ratio:2/3;border-radius:8px;background:repeating-linear-gradient(135deg,#1C1C20 0 8px,#222227 8px 16px)"></span>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:10px">
+<div style="display:flex;flex-direction:column;gap:4px">
+<span style="font-size:13px;font-weight:700;color:{{accent}}">{{h.dday}}</span>
+<span style="font-size:18px;font-weight:700;letter-spacing:-0.3px;line-height:1.3">{{h.title}}</span>
+<span style="font-size:13px;color:#8D8D93">{{h.platform}} · {{h.type}} · {{h.date}}</span>
+</div>
+<button type="button" aria-pressed="{{h.on}}" onClick="{{h.toggle}}" style="{{h.btnStyle}}"><span>{{h.btnLabel}}</span><span>{{h.count}}</span></button>
+</div>
+</li>
+</sc-for>
+</ul>
+</div>
+</section>
+
+<section id="cal" aria-labelledby="cal-h" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+<h2 id="cal-h" style="margin:0;font-size:32px;font-weight:800;letter-spacing:-1px">{{calTitle}}</h2>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+<div role="tablist" aria-label="보기 단위" style="display:flex;gap:4px;background:#17171A;padding:4px;border-radius:12px">
+<sc-for list="{{views}}" as="v" hint-placeholder-count="3">
+<button type="button" role="tab" aria-selected="{{v.sel}}" onClick="{{v.pick}}" style="{{v.style}}">{{v.name}}</button>
+</sc-for>
+</div>
+<div style="display:flex;gap:4px">
+<button type="button" onClick="{{prev}}" aria-label="이전" style="width:44px;height:44px;border-radius:12px;border:1px solid #2A2A30;background:transparent;color:#EDEDEA;cursor:pointer;font-size:16px">←</button>
+<button type="button" onClick="{{toToday}}" style="height:44px;padding:0 16px;border-radius:12px;border:1px solid #2A2A30;background:transparent;color:#EDEDEA;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600">오늘</button>
+<button type="button" onClick="{{next}}" aria-label="다음" style="width:44px;height:44px;border-radius:12px;border:1px solid #2A2A30;background:transparent;color:#EDEDEA;cursor:pointer;font-size:16px">→</button>
+</div>
+</div>
+</div>
+
+<sc-if value="{{isYear}}" hint-placeholder-val="{{false}}">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+<sc-for list="{{yearCells}}" as="y" hint-placeholder-count="12">
+<button type="button" onClick="{{y.pick}}" aria-label="{{y.label}}" style="{{y.style}}">
+<span style="font-size:15px;font-weight:600;color:{{y.nameColor}}">{{y.name}}</span>
+<span style="font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1">{{y.count}}<span style="font-size:14px;font-weight:500;color:#8D8D93;margin-left:6px">작품</span></span>
+<span style="display:block;height:4px;border-radius:2px;background:#2A2A30;width:100%"><span style="display:block;height:4px;border-radius:2px;width:{{y.bar}};background:{{y.barColor}}"></span></span>
+<span style="font-size:13px;color:#8D8D93">{{y.sub}}</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isMonth}}" hint-placeholder-val="{{true}}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px">
+<sc-for list="{{dowHead}}" as="h" hint-placeholder-count="7">
+<span style="padding:0 10px;font-size:13px;font-weight:600;color:{{h.color}}">{{h.name}}</span>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px">
+<sc-for list="{{monthCells}}" as="c" hint-placeholder-count="35">
+<div style="{{c.boxStyle}}">
+<span style="font-size:14px;font-weight:700;color:{{c.numColor}}">{{c.num}}</span>
+<sc-for list="{{c.items}}" as="it" hint-placeholder-count="0">
+<a href="#" title="{{it.full}}" style="display:block;font-size:12px;line-height:1.5;color:#EDEDEA;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:#8D8D93">{{it.p}}</span> {{it.t}}</a>
+</sc-for>
+<span style="font-size:12px;color:#8D8D93">{{c.more}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isWeek}}" hint-placeholder-val="{{false}}">
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px">
+<sc-for list="{{weekCells}}" as="d" hint-placeholder-count="7">
+<div style="{{d.boxStyle}}">
+<div style="display:flex;align-items:baseline;gap:8px">
+<span style="font-size:22px;font-weight:800;color:{{d.numColor}}">{{d.date}}</span>
+<span style="font-size:13px;font-weight:600;color:{{d.dowColor}}">{{d.dow}}</span>
+</div>
+<sc-for list="{{d.items}}" as="it" hint-placeholder-count="0">
+<a href="#" style="display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:8px;background:#202025;text-decoration:none;color:#EDEDEA">
+<span style="font-size:12px;color:#8D8D93">{{it.p}}</span>
+<span style="font-size:14px;font-weight:600">{{it.t}}</span>
+</a>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</section>
+
+<section id="ott" aria-labelledby="ott-h" style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px">
+<h2 id="ott-h" style="margin:0;font-size:32px;font-weight:800;letter-spacing:-1px">OTT</h2>
+<span style="font-size:14px;color:#8D8D93">{{ottCount}}개 작품</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div role="group" aria-label="플랫폼" style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{platforms}}" as="pf" hint-placeholder-count="6">
+<button type="button" aria-pressed="{{pf.sel}}" onClick="{{pf.pick}}" style="{{pf.style}}">{{pf.name}}</button>
+</sc-for>
+</div>
+<div role="group" aria-label="카테고리" style="display:flex;flex-wrap:wrap;gap:20px">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="5">
+<button type="button" aria-pressed="{{c.sel}}" onClick="{{c.pick}}" style="{{c.style}}">{{c.name}}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+<div style="flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap">
+<h3 style="margin:0;font-size:20px;font-weight:700">공개 예정</h3>
+<span style="font-size:13px;color:#8D8D93">기사 기준 예정일 · 변동될 수 있어요</span>
+</div>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{upcoming}}" as="u" hint-placeholder-count="5">
+<li style="display:flex;gap:16px;align-items:center;padding:12px 16px 12px 12px;border-radius:14px;background:#17171A">
+<div style="flex:0 0 56px;aspect-ratio:2/3;border-radius:8px;background:repeating-linear-gradient(135deg,#1C1C20 0 8px,#222227 8px 16px)"></div>
+<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span style="font-size:16px;font-weight:700">{{u.title}}</span>
+<span style="font-size:13px;color:#8D8D93">{{u.platform}} · {{u.type}} · {{u.date}}</span>
+</div>
+<div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+<span style="font-size:18px;font-weight:800;color:{{accent}}">{{u.dday}}</span>
+<a href="#" style="font-size:12px;color:#8D8D93;padding:8px 0">출처 ↗</a>
+</div>
+</li>
+</sc-for>
+</ul>
+</div>
+
+<div style="flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+<h3 style="margin:0;font-size:20px;font-weight:700">지금 볼 수 있어요</h3>
+<a href="#" style="font-size:13px;color:#8D8D93;padding:8px 0;text-decoration:none">전체 보기 →</a>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:20px 12px">
+<sc-for list="{{available}}" as="v" hint-placeholder-count="6">
+<a href="#" style="display:flex;flex-direction:column;gap:8px;text-decoration:none;color:#EDEDEA">
+<div style="aspect-ratio:2/3;border-radius:10px;background:repeating-linear-gradient(135deg,#1C1C20 0 8px,#222227 8px 16px);display:flex;align-items:flex-end;padding:8px;box-sizing:border-box;font-size:11px;color:#8D8D93;font-family:ui-monospace,monospace">poster</div>
+<span style="font-size:14px;font-weight:600">{{v.title}}</span>
+<span style="font-size:12px;color:#8D8D93;margin-top:-4px">{{v.platform}} · {{v.type}}</span>
+</a>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+
+<section id="theater" aria-labelledby="theater-h" style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+<h2 id="theater-h" style="margin:0;font-size:32px;font-weight:800;letter-spacing:-1px">극장</h2>
+<div role="tablist" aria-label="극장 구분" style="display:flex;gap:4px;background:#17171A;padding:4px;border-radius:12px">
+<button type="button" role="tab" aria-selected="{{tabNowSel}}" onClick="{{pickNow}}" style="{{tabNowStyle}}">상영중</button>
+<button type="button" role="tab" aria-selected="{{tabSoonSel}}" onClick="{{pickSoon}}" style="{{tabSoonStyle}}">개봉예정</button>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:28px 18px">
+<sc-for list="{{movies}}" as="m" hint-placeholder-count="6">
+<a href="#" style="display:flex;flex-direction:column;gap:12px;text-decoration:none;color:#EDEDEA">
+<div style="position:relative;aspect-ratio:2/3;border-radius:12px;background:repeating-linear-gradient(135deg,#1C1C20 0 8px,#222227 8px 16px);display:flex;align-items:flex-end;padding:10px;box-sizing:border-box;font-size:11px;color:#8D8D93;font-family:ui-monospace,monospace">
+poster
+<span style="position:absolute;top:10px;left:10px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;{{m.badgeStyle}}">{{m.badge}}</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:3px">
+<span style="font-size:16px;font-weight:700">{{m.title}}</span>
+<span style="font-size:13px;color:#8D8D93">{{m.meta}}</span>
+</div>
+</a>
+</sc-for>
+</div>
+</section>
+</main>
+
+<footer style="border-top:1px solid #26262B">
+<div style="max-width:1240px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.6;color:#8D8D93">
+<p style="margin:0">극장 정보: 영화진흥위원회 KOBIS · 작품 정보·이미지: TMDB · 스트리밍 제공 정보: JustWatch</p>
+<p style="margin:0">OTT 공개 예정일은 뉴스 기사를 바탕으로 정리했으며 실제와 다를 수 있습니다.</p>
+</div>
+</footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#FF6A2B&quot;,&quot;options&quot;:[&quot;#FF6A2B&quot;,&quot;#C6F135&quot;,&quot;#6EA8FF&quot;]},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:3000}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'now', platform: '전체', cat: '전체', view: 'month', y: 2026, m: 9, wk: 0, liked: {} };
+  }
+  evs(y, m, d) {
+    var P = ['넷플릭스', '티빙', '디즈니+', '쿠팡플레이', '웨이브', '극장'];
+    var T = ['드라마', '예능', '영화', '애니메이션'];
+    var h = (m * 31 + d * 17 + (y % 10) * 5) % 11, out = [];
+    var n = h < 3 ? 0 : h < 7 ? 1 : h < 9 ? 2 : 3;
+    for (var i = 0; i < n; i++) {
+      var p = P[(m + d + i * 2) % 6], t = p === '극장' ? '영화' : T[(m * 3 + d + i) % 4];
+      out.push({ p: p, t: '[' + t + ' 제목]', full: p + ' · [' + t + ' 제목]' });
+    }
+    return out;
+  }
+  renderVals() {
+    var accent = this.props.accent ?? '#FF6A2B';
+    var self = this, st = this.state, view = st.view;
+    var TEXT = '#EDEDEA', MUTE = '#8D8D93', SURF = '#17171A', LINE = '#2A2A30', INK = '#0E0E10';
+    var SUN = '#FF7A70', SAT = '#7BA7FF';
+    var dowN = ['일', '월', '화', '수', '목', '금', '토'];
+    var dowC = function (i) { return i === 0 ? SUN : i === 6 ? SAT : MUTE; };
+    var numC = function (i) { return i === 0 ? SUN : i === 6 ? SAT : TEXT; };
+    var today = new Date(2026, 9, 8);
+    var same = function (a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
+
+    var segOn = 'min-height:44px;padding:0 18px;border:0;border-radius:9px;background:#2A2A30;color:' + TEXT + ';cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;';
+    var segOff = 'min-height:44px;padding:0 18px;border:0;border-radius:9px;background:transparent;color:' + MUTE + ';cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;';
+
+    var views = [['year', '연간'], ['month', '월간'], ['week', '주간']].map(function (v) {
+      var sel = view === v[0];
+      return { name: v[1], sel: sel ? 'true' : 'false', style: sel ? segOn : segOff, pick: function () { self.setState({ view: v[0] }); } };
+    });
+
+    var wkStart = new Date(2026, 9, 4 + st.wk * 7), calTitle;
+    if (view === 'year') calTitle = st.y + '년';
+    else if (view === 'month') calTitle = st.y + '년 ' + (st.m + 1) + '월';
+    else { var we = new Date(wkStart.getFullYear(), wkStart.getMonth(), wkStart.getDate() + 6); calTitle = (wkStart.getMonth() + 1) + '월 ' + wkStart.getDate() + '일 – ' + (we.getMonth() + 1) + '월 ' + we.getDate() + '일'; }
+
+    var yearCells = [], counts = [];
+    for (var mi = 0; mi < 12; mi++) {
+      var dim = new Date(st.y, mi + 1, 0).getDate(), c = 0, ott = 0;
+      for (var dd = 1; dd <= dim; dd++) { var e = this.evs(st.y, mi, dd); c += e.length; ott += e.filter(function (x) { return x.p !== '극장'; }).length; }
+      counts.push([c, ott]);
+    }
+    var maxC = Math.max.apply(null, counts.map(function (x) { return x[0]; })) || 1;
+    for (var k = 0; k < 12; k++) (function (k) {
+      var cur = st.y === 2026 && k === 9;
+      yearCells.push({
+        name: (k + 1) + '월', count: counts[k][0], label: (k + 1) + '월 보기', nameColor: cur ? accent : TEXT,
+        bar: Math.round(counts[k][0] / maxC * 100) + '%', barColor: cur ? accent : '#5A5A62',
+        sub: 'OTT ' + counts[k][1] + ' · 극장 ' + (counts[k][0] - counts[k][1]),
+        style: 'display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:20px;min-height:44px;border-radius:14px;border:' + (cur ? '1.5px solid ' + accent : '1px solid transparent') + ';background:' + SURF + ';color:' + TEXT + ';cursor:pointer;text-align:left;font-family:inherit;',
+        pick: function () { self.setState({ view: 'month', m: k }); }
+      });
+    })(k);
+
+    var first = new Date(st.y, st.m, 1).getDay(), dimM = new Date(st.y, st.m + 1, 0).getDate(), total = Math.ceil((first + dimM) / 7) * 7, monthCells = [];
+    for (var i = 0; i < total; i++) {
+      var day = i - first + 1, col = i % 7;
+      if (day < 1 || day > dimM) { monthCells.push({ num: '', items: [], more: '', numColor: MUTE, boxStyle: 'min-height:112px;border-radius:12px;background:#121214;' }); continue; }
+      var ev = this.evs(st.y, st.m, day), isT = same(new Date(st.y, st.m, day), today);
+      monthCells.push({
+        num: day, items: ev.slice(0, 3), more: ev.length > 3 ? '+' + (ev.length - 3) + '개 더' : '',
+        numColor: isT ? accent : numC(col),
+        boxStyle: 'display:flex;flex-direction:column;gap:4px;min-height:112px;padding:10px;box-sizing:border-box;min-width:0;border-radius:12px;background:' + SURF + ';' + (isT ? 'box-shadow:inset 0 0 0 1.5px ' + accent + ';' : '')
+      });
+    }
+    var dowHead = dowN.map(function (n, i) { return { name: n, color: dowC(i) }; });
+
+    var weekCells = [];
+    for (var j = 0; j < 7; j++) {
+      var dt = new Date(wkStart.getFullYear(), wkStart.getMonth(), wkStart.getDate() + j), isT2 = same(dt, today);
+      weekCells.push({
+        dow: dowN[j], date: dt.getDate(), items: this.evs(dt.getFullYear(), dt.getMonth(), dt.getDate()),
+        numColor: isT2 ? accent : TEXT, dowColor: dowC(j),
+        boxStyle: 'display:flex;flex-direction:column;gap:10px;min-height:200px;padding:14px 10px;box-sizing:border-box;min-width:0;border-radius:14px;background:' + SURF + ';' + (isT2 ? 'box-shadow:inset 0 0 0 1.5px ' + accent + ';' : '')
+      });
+    }
+
+    var step = function (dir) {
+      return function () {
+        if (view === 'year') self.setState({ y: st.y + dir });
+        else if (view === 'month') { var nm = st.m + dir, ny = st.y; if (nm < 0) { nm = 11; ny--; } if (nm > 11) { nm = 0; ny++; } self.setState({ m: nm, y: ny }); }
+        else self.setState({ wk: st.wk + dir });
+      };
+    };
+
+    var hm = st.hotMode || 'soon';
+    var hotBase = hm === 'soon' ? [
+      { title: '[드라마 제목]', platform: '티빙', type: '드라마', date: '10.14 (수)', dday: 'D-6', n: 2841 },
+      { title: '[시리즈 제목]', platform: '디즈니+', type: '드라마', date: '10.9 (금)', dday: 'D-1', n: 2310 },
+      { title: '[영화 제목]', platform: '넷플릭스', type: '영화', date: '10.17 (토)', dday: 'D-9', n: 1976 },
+      { title: '[예능 제목]', platform: '쿠팡플레이', type: '예능', date: '10.23 (금)', dday: 'D-15', n: 1428 }
+    ] : [
+      { title: '[영화 제목]', platform: '극장', type: '영화', date: '10.1 개봉', dday: '상영중 1위', n: 5120 },
+      { title: '[드라마 제목]', platform: '넷플릭스', type: '드라마', date: '10.3 공개', dday: 'OTT 1위', n: 4388 },
+      { title: '[영화 제목]', platform: '극장', type: '영화', date: '9.24 개봉', dday: '상영중 2위', n: 3902 },
+      { title: '[예능 제목]', platform: '티빙', type: '예능', date: '10.2 공개', dday: 'OTT 2위', n: 3175 }
+    ];
+    var hot = hotBase.map(function (h, i) {
+      var on = !!st.liked[hm + i];
+      return {
+        title: h.title, platform: h.platform, type: h.type, date: h.date, dday: h.dday,
+        count: (h.n + (on ? 1 : 0)).toLocaleString('ko-KR'), on: on ? 'true' : 'false', btnLabel: hm === 'soon' ? (on ? '기대하는 중' : '기대돼요') : (on ? '추천했어요' : '추천해요'),
+        btnStyle: 'display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 16px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;' + (on ? 'border:1px solid ' + accent + ';background:' + accent + ';color:' + INK + ';' : 'border:1px solid #3A3A42;background:rgba(14,14,16,0.5);color:' + TEXT + ';'),
+        toggle: function () { var l = Object.assign({}, st.liked); l[hm + i] = !l[hm + i]; self.setState({ liked: l }); }
+      };
+    });
+
+    var now = st.tab === 'now';
+    var nowBadge = 'background:#2A2A30;color:' + TEXT + ';', soonBadge = 'background:' + accent + ';color:' + INK + ';';
+    var mk = function (b, m, sx) { return { badge: b, title: '[영화 제목]', meta: m, badgeStyle: sx }; };
+    var movies = now ? [mk('상영중', '[장르] · 9.24 개봉', nowBadge), mk('상영중', '[장르] · 9.30 개봉', nowBadge), mk('상영중', '[장르] · 10.1 개봉', nowBadge), mk('상영중', '[장르] · 10.1 개봉', nowBadge), mk('상영중', '[장르] · 10.7 개봉', nowBadge), mk('상영중', '[장르] · 10.7 개봉', nowBadge)]
+      : [mk('D-6', '[장르] · 10.14 개봉', soonBadge), mk('D-6', '[장르] · 10.14 개봉', soonBadge), mk('D-13', '[장르] · 10.21 개봉', soonBadge), mk('D-15', '[장르] · 10.23 개봉', soonBadge), mk('D-20', '[장르] · 10.28 개봉', soonBadge), mk('D-22', '[장르] · 10.30 개봉', soonBadge)];
+
+    var chipOn = 'min-height:44px;padding:0 20px;border-radius:22px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;border:1px solid ' + TEXT + ';background:' + TEXT + ';color:' + INK + ';';
+    var chipOff = 'min-height:44px;padding:0 20px;border-radius:22px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;border:1px solid ' + LINE + ';background:transparent;color:#C9C9CE;';
+    var catOn = 'min-height:44px;padding:0;border:0;background:transparent;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:' + accent + ';';
+    var catOff = 'min-height:44px;padding:0;border:0;background:transparent;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:' + MUTE + ';';
+    var platforms = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠팡플레이', '웨이브'].map(function (n) { var sl = st.platform === n; return { name: n, sel: sl ? 'true' : 'false', style: sl ? chipOn : chipOff, pick: function () { self.setState({ platform: n }); } }; });
+    var cats = ['전체', '영화', '드라마', '예능', '애니메이션'].map(function (n) { var sl = st.cat === n; return { name: n, sel: sl ? 'true' : 'false', style: sl ? catOn : catOff, pick: function () { self.setState({ cat: n }); } }; });
+    var up = [
+      { dday: 'D-1', date: '10.9 (금)', title: '[영화 제목]', platform: '쿠팡플레이', type: '영화' },
+      { dday: 'D-1', date: '10.9 (금)', title: '[시리즈 제목]', platform: '디즈니+', type: '드라마' },
+      { dday: 'D-2', date: '10.10 (토)', title: '[예능 제목]', platform: '넷플릭스', type: '예능' },
+      { dday: 'D-6', date: '10.14 (수)', title: '[드라마 제목]', platform: '티빙', type: '드라마' },
+      { dday: 'D-9', date: '10.17 (토)', title: '[드라마 제목]', platform: '웨이브', type: '드라마' }
+    ];
+    var av = [
+      { title: '[작품 제목]', platform: '넷플릭스', type: '드라마' }, { title: '[작품 제목]', platform: '티빙', type: '예능' },
+      { title: '[작품 제목]', platform: '디즈니+', type: '영화' }, { title: '[작품 제목]', platform: '쿠팡플레이', type: '드라마' },
+      { title: '[작품 제목]', platform: '넷플릭스', type: '영화' }, { title: '[작품 제목]', platform: '웨이브', type: '애니메이션' }
+    ];
+    var f = function (x) { return (st.platform === '전체' || x.platform === st.platform) && (st.cat === '전체' || x.type === st.cat); };
+    var upcoming = up.filter(f), available = av.filter(f);
+
+    return {
+      accent: accent, calTitle: calTitle, views: views,
+      isYear: view === 'year', isMonth: view === 'month', isWeek: view === 'week',
+      yearCells: yearCells, dowHead: dowHead, monthCells: monthCells, weekCells: weekCells,
+      prev: step(-1), next: step(1),
+      toToday: function () { self.setState({ y: 2026, m: 9, wk: 0 }); },
+      lead: hot[0], rest: hot.slice(1), movies: movies,
+      hotTitle: hm === 'soon' ? '곧 공개되는 기대작' : '지금 인기 있는 작품',
+      hotSoonSel: hm === 'soon' ? 'true' : 'false', hotNowSel: hm === 'soon' ? 'false' : 'true',
+      hotSoonStyle: hm === 'soon' ? segOn : segOff, hotNowStyle: hm === 'soon' ? segOff : segOn,
+      pickHotSoon: function () { self.setState({ hotMode: 'soon' }); }, pickHotNow: function () { self.setState({ hotMode: 'now' }); },
+      tabNowSel: now ? 'true' : 'false', tabSoonSel: now ? 'false' : 'true',
+      tabNowStyle: now ? segOn : segOff, tabSoonStyle: now ? segOff : segOn,
+      pickNow: function () { self.setState({ tab: 'now' }); }, pickSoon: function () { self.setState({ tab: 'soon' }); },
+      platforms: platforms, cats: cats, upcoming: upcoming, available: available, ottCount: upcoming.length + available.length
+    };
+  }
+}
+</script>
+</body>
+</html>
