@@ -9,7 +9,7 @@ import { NaverNewsService } from '../sources/naver-news.service.js'
 import { TmdbService, type Media } from '../sources/tmdb.service.js'
 
 const KEYWORDS = ['넷플릭스 공개 예정', '넷플릭스 공개일', '티빙 공개 예정', '디즈니플러스 공개 예정', '쿠팡플레이 공개 예정', '웨이브 공개 예정', 'OTT 공개 예정', 'OTT 신작 공개']
-const PER_RUN = 30 // 한 번에 추출할 새 기사 수
+const PER_RUN = 300 // 한 번에 처리할 새 기사 수 (규칙 추출이라 비용 없음)
 const SEEN_MAX = 3000
 
 export interface Report { articles: number; newArticles: number; extracted: number; newWorks: number; updated: number; released: number; skipped: string[] }
@@ -43,7 +43,7 @@ export class CollectService {
       }
     }
 
-    await step('뉴스 수집·추출', has('naver') && has('anthropic'), () => this.news(s, t, report))
+    await step('뉴스 수집·추출', has('naver'), () => this.news(s, t, report))
     await step('TMDB 보강·공개 확인', has('tmdb'), () => this.enrich(s, t, report))
     for (const w of s.works) {
       if (w.status === 'upcoming' && w.date && w.date <= addDays(t, -7)) { w.status = 'released'; report.released++ }
@@ -65,7 +65,7 @@ export class CollectService {
     report.newArticles = fresh.length
     if (!fresh.length) return
 
-    const items = await this.extract.run(fresh, t)
+    const items = await this.extract.run(fresh)
     report.extracted = items.length
     const byKey = new Map(s.works.map((w) => [w.key, w]))
     for (const it of items) {
@@ -75,7 +75,9 @@ export class CollectService {
       if (date && date < addDays(t, -7)) continue
       const src = { title: a.title, link: a.link, date: a.pubDate }
       const key = workKey(it.title, it.platform)
-      const w = byKey.get(key)
+      // "라스트 스테이지"와 "라스트 스테이지 : 24H"처럼 앞부분이 같고 플랫폼·날짜도 같으면 같은 작품
+      const w = byKey.get(key) ?? s.works.find((x) =>
+        x.platform === it.platform && date && x.date === date && (x.key.startsWith(key.split('|')[0]) || key.startsWith(x.key.split('|')[0])))
       if (!w) {
         const nw: StoredWork = {
           id: createHash('sha1').update(key).digest('hex').slice(0, 12), key, title: it.title.trim(), platform: it.platform, type: it.type,
@@ -86,6 +88,7 @@ export class CollectService {
         report.newWorks++
         continue
       }
+      byKey.set(key, w)
       if (!w.sources.some((x) => x.link === src.link)) w.sources.push(src)
       // 더 최근 기사의 정확한 날짜를 우선. 애매한 날짜로 정확한 날짜를 덮지 않는다
       if (date && (!w.date || src.date >= (w.dateFrom ?? ''))) {
@@ -104,7 +107,7 @@ export class CollectService {
     for (const w of s.works.filter((w) => w.tmdbId === undefined).slice(0, 40)) {
       const hit = await this.tmdb.search(w.title, media(w))
       w.tmdbId = hit?.id ?? null
-      if (hit) Object.assign(w, { poster: hit.poster, overview: hit.overview })
+      if (hit) Object.assign(w, { poster: hit.poster, overview: hit.overview, type: hit.type ?? w.type })
     }
     const ids = await this.tmdb.providerIds()
     for (const w of s.works) {

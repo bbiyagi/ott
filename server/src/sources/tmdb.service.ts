@@ -52,7 +52,11 @@ export class TmdbService {
 
   async search(title: string, media: Media) {
     const x = (await this.get(`/search/${media}`, { query: title })).results[0]
-    return x ? { id: x.id as number, poster: img(x.poster_path), overview: (x.overview as string) || undefined } : null
+    if (!x) return null
+    const g: number[] = x.genre_ids ?? []
+    // TMDB 장르로 구분 보정: 애니메이션 16, 리얼리티 10764, 토크 10767
+    const type = g.includes(16) ? '애니메이션' : media === 'tv' && g.some((n) => n === 10764 || n === 10767) ? '예능' : undefined
+    return { id: x.id as number, poster: img(x.poster_path), overview: (x.overview as string) || undefined, type }
   }
 
   async searchMovie(title: string) {

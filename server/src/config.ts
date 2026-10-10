@@ -3,7 +3,6 @@ export const env = (k: string) => process.env[k]?.trim() || undefined
 
 const KEYS = {
   naver: ['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'],
-  anthropic: ['ANTHROPIC_API_KEY'],
   tmdb: ['TMDB_TOKEN'],
   kobis: ['KOBIS_KEY'],
 } as const

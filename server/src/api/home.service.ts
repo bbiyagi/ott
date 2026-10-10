@@ -18,7 +18,9 @@ export class HomeService {
       genre: w.genre, poster: w.poster, source: 'sources' in w ? w.sources.at(-1)?.link : w.source, likes: likes[w.id] ?? 0,
     })
 
-    const upcoming = s.works.filter((w) => w.status === 'upcoming').map(out)
+    // 규칙 추출이라 잘못 뽑힌 제목이 섞일 수 있다. TMDB에 있거나 기사 2개 이상에 나온 작품만 보여 준다
+    const works = s.works.filter((w) => w.tmdbId || w.sources.length >= 2)
+    const upcoming = works.filter((w) => w.status === 'upcoming' && (!w.date || w.date >= t)).map(out)
     const soon = upcoming
       .filter((w) => w.date && w.date >= t && w.date <= addDays(t, 30))
       .sort((a, b) => b.likes! - a.likes! || a.date!.localeCompare(b.date!))
@@ -32,7 +34,7 @@ export class HomeService {
     }
 
     const ev = (w: Work): CalEvent => ({ date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source })
-    const events = [...s.works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev)
+    const events = [...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev)
 
     return {
       hot: { soon, now },

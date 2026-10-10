@@ -6,19 +6,17 @@
     "dev": "tsc -p server && concurrently -k -n web,tsc,api -c cyan,gray,magenta \"vite\" \"tsc -p server -w --preserveWatchOutput\" \"node --watch --env-file-if-exists=server/.env server/dist/main.js\"",
     "build": "vue-tsc --noEmit && vite build && tsc -p server",
     "collect": "tsc -p server && node --env-file-if-exists=server/.env server/dist/collect/run.js",
-    "test": "tsc -p server && node --test server/dist/collect/collect.test.js",
+    "test": "tsc -p server && node --test \"server/dist/**/*.test.js\"",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.133.0",
     "@nestjs/common": "^12.1.2",
     "@nestjs/core": "^12.1.2",
     "@nestjs/platform-express": "^12.1.2",
     "@upstash/redis": "^1.39.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "vue": "^3.5.43",
-    "zod": "^4.6.5"
+    "vue": "^3.5.43"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

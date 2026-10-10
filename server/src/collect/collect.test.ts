@@ -6,7 +6,7 @@ import type { Article } from '../sources/naver-news.service.js'
 import type { ExtractedWork } from '../sources/extract.service.js'
 import { CollectService } from './collect.service.js'
 
-Object.assign(process.env, { TODAY_OVERRIDE: '2026-10-08', NAVER_CLIENT_ID: 'x', NAVER_CLIENT_SECRET: 'x', ANTHROPIC_API_KEY: 'x' })
+Object.assign(process.env, { TODAY_OVERRIDE: '2026-10-08', NAVER_CLIENT_ID: 'x', NAVER_CLIENT_SECRET: 'x' })
 delete process.env.TMDB_TOKEN
 delete process.env.KOBIS_KEY
 
@@ -38,6 +38,14 @@ test('새 작품을 만들고 같은 작품은 합친다', async () => {
   await feed('a2', '2026-10-02T00:00:00Z', { ...work('2026-10-20'), title: '오징어게임3!' })
   assert.equal(state.works.length, 1)
   assert.equal(state.works[0].sources.length, 2)
+})
+
+test('앞부분이 같고 플랫폼·날짜가 같으면 같은 작품', async () => {
+  const { state, feed } = setup()
+  await feed('a1', '2026-10-01T00:00:00Z', { ...work('2026-10-13'), title: '라스트 스테이지 : 24H' })
+  await feed('a2', '2026-10-02T00:00:00Z', { ...work('2026-10-13'), title: '라스트 스테이지' })
+  await feed('a3', '2026-10-02T00:00:00Z', { ...work('2026-10-20'), title: '라스트' }) // 날짜가 다르면 다른 작품
+  assert.deepEqual(state.works.map((w) => [w.title, w.sources.length]), [['라스트 스테이지 : 24H', 2], ['라스트', 1]])
 })
 
 test('애매한 날짜로 정확한 날짜를 덮지 않고, 더 최근 기사의 정확한 날짜는 반영한다', async () => {
