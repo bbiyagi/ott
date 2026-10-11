@@ -92,7 +92,11 @@ const onPlatform = (w: Work, p: string) => p === '전체' || (w.platforms ?? [w.
 /** 메인 기대작: 공개 예정/지금 인기 × 플랫폼, 10개 (배너 1 + 목록 3 + 포스터 6) */
 export function useHot(data: () => HomeData) {
   const mode = ref<HotMode>('soon'), platform = ref('전체')
-  const list = computed(() => data().hot[mode.value].filter((w) => onPlatform(w, platform.value)).slice(0, 10))
+  // 공개 예정: 기사 수로 기대작 10개를 고른 뒤 D-day가 가까운 순으로 보여 준다
+  const list = computed(() => {
+    const top = data().hot[mode.value].filter((w) => onPlatform(w, platform.value)).slice(0, 10)
+    return mode.value === 'soon' ? top.sort(byDate) : top
+  })
   const title = computed(() => {
     const p = platform.value === '전체' ? '' : `${platform.value} `
     return mode.value === 'soon' ? `곧 공개되는 ${p}기대작` : `지금 인기 있는 ${p}작품`

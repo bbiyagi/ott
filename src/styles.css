@@ -38,8 +38,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .muted { color: var(--mute); }
 .sun { color: var(--sun); }
 .sat { color: var(--sat); }
-.loading, .empty { color: var(--mute); font-size: 14px; padding: 8px 0; }
-.loading { padding: 48px 32px; }
+.empty { color: var(--mute); font-size: 14px; padding: 8px 0; }
 
 .logo { font-weight: 800; letter-spacing: -0.5px; text-decoration: none; color: var(--text); }
 .card { position: relative; background: var(--surf); border-radius: 14px; }

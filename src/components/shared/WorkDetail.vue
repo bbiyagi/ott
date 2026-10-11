@@ -45,9 +45,7 @@ const shortDate = (s: string) => md(s.slice(0, 10))
         <p v-else-if="detail.loading" class="muted">불러오는 중…</p>
 
         <div class="actions">
-          <a v-for="l in watchLinks(detail)" :key="l.url" :href="l.url" target="_blank" rel="noopener" class="act primary">{{ l.label }} ↗</a>
-          <a v-if="detail.tmdbUrl" :href="detail.tmdbUrl" target="_blank" rel="noopener" class="act">TMDB ↗</a>
-        </div>
+          <a v-for="l in watchLinks(detail)" :key="l.url" :href="l.url" target="_blank" rel="noopener" class="act primary">{{ l.label }} ↗</a>        </div>
 
         <section v-if="detail.sources.length" class="sources" aria-labelledby="detail-src">
           <h3 id="detail-src">출처 기사 {{ detail.sources.length }}건</h3>

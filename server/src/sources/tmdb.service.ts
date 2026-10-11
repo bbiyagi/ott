@@ -147,21 +147,29 @@ export class TmdbService {
         const params = { watch_region: 'KR', with_watch_providers: pid, with_watch_monetization_types: 'flatrate', sort_by: 'popularity.desc', ...genres }
         let r = await this.get(`/discover/${media}`, { ...params, ...recent[media] })
         if (!r.results.length) r = await this.get(`/discover/${media}`, params) // 최근 작품이 없으면 기간 없이
-        // 5개씩: 메인에서 장수 프로그램을 빼고도 고를 작품이 남도록
-        for (const [i, x] of (r.results as any[]).slice(0, 5).entries()) {
+        // 5개씩: 메인에서 장수 프로그램을 빼고도 고를 작품이 남도록.
+        // 순위는 메인에 나올 수 있는 작품(장수 제외)끼리만 센다. 로 앤 오더 같은 1위가 빠져 "4위"부터 보이지 않게
+        let n = 0
+        for (const x of (r.results as any[]).slice(0, 5)) {
+          const longRun = media === 'tv' ? await this.longRun(x.id) : false
           // 같은 작품이 여러 플랫폼에 있으면 플랫폼마다 따로 둔다 (id 끝 = 플랫폼 번호)
           const id = `tmdb-${media}-${x.id}-${PLATFORMS.indexOf(platform as (typeof PLATFORMS)[number])}`
           out.push({
             id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: null, ...pics(x),
-            rank: `${platform} ${label} 인기 ${i + 1}위`, pop: x.popularity, ko: x.original_language === 'ko',
-            overview: x.overview || undefined, tmdbUrl: `https://www.themoviedb.org/${media}/${x.id}`,
-            longRun: media === 'tv' ? await this.longRun(x.id) : false,
+            rank: longRun ? undefined : `${platform} ${label} 인기 ${++n}위`, pop: x.popularity, ko: x.original_language === 'ko',
+            overview: x.overview || undefined, tmdbUrl: `https://www.themoviedb.org/${media}/${x.id}`, longRun,
           })
         }
       }
     }
-    const seen = new Set<string>()
-    return out.sort((a, b) => b.pop - a.pop).filter((w) => !seen.has(w.id) && seen.add(w.id))
+    // 같은 작품이 두 목록에 있으면(예: 드라마 3위이자 한국 드라마 1위) 더 높은 순위 쪽을 남긴다
+    const rankNo = (w: Work) => Number(w.rank?.match(/(\d+)위$/)?.[1] ?? 99)
+    const best = new Map<string, (typeof out)[number]>()
+    for (const w of out) {
+      const prev = best.get(w.id)
+      if (!prev || rankNo(w) < rankNo(prev)) best.set(w.id, w)
+    }
+    return [...best.values()].sort((a, b) => b.pop - a.pop)
   }
 
   /** 한국 개봉 예정 영화 (60일 안) */
