@@ -75,8 +75,10 @@ export const NEWS_NOTE = '기사에서 모은 날짜라 정확하지 않을 수 
 /** 배너 뱃지: 공개 예정은 D-day, 지금 인기는 "인기 1위" */
 export const hotTag = (w: Work, mode: HotMode) => (mode === 'now' ? w.rank?.match(/인기 \d+위$/)?.[0] ?? '' : dday(w))
 /** 왜 여기 있는지: "티빙 드라마 기대작 · 기사 9건" / "넷플릭스 예능 인기 1위" */
-export const hotWhy = (w: Work, mode: HotMode) =>
-  mode === 'now' ? w.rank ?? '' : `${platformLabel(w)} ${w.type} 기대작${w.buzz ? ` · 기사 ${w.buzz}건` : ''}`
+export const hotWhy = (w: Work, mode: HotMode, platform = '전체') =>
+  mode === 'now'
+    ? w.rank ?? ''
+    : `${platform === '전체' ? platformLabel(w) : platform} ${w.type} 기대작${w.buzz ? ` · 기사 ${w.buzz}건` : ''}` // 플랫폼을 고르면 그 이름으로
 /** 티빙 +1 · 드라마 · 10.14 (수) */
 export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, mode === 'soon' ? when(w) : ''].filter(Boolean).join(' · ')
 
@@ -85,10 +87,47 @@ export const bg = (url?: string) => (url ? { background: `center/cover no-repeat
 export const PLATFORMS = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠팡플레이']
 export const CATS = ['전체', '영화', '드라마', '예능', '애니메이션']
 
+const onPlatform = (w: Work, p: string) => p === '전체' || (w.platforms ?? [w.platform]).includes(p)
+
+/** 메인 기대작: 공개 예정/지금 인기 × 플랫폼, 10개 (배너 1 + 목록 3 + 포스터 6) */
+export function useHot(data: () => HomeData) {
+  const mode = ref<HotMode>('soon'), platform = ref('전체')
+  const list = computed(() => data().hot[mode.value].filter((w) => onPlatform(w, platform.value)).slice(0, 10))
+  const title = computed(() => {
+    const p = platform.value === '전체' ? '' : `${platform.value} `
+    return mode.value === 'soon' ? `곧 공개되는 ${p}기대작` : `지금 인기 있는 ${p}작품`
+  })
+  return { mode, platform, list, title }
+}
+
+// ---- 검색: 이미 받아 둔 데이터에서 찾는다 (서버 호출 없음) ----
+const norm = (s: string) => s.replace(/시즌|season/gi, '').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
+export type HitKind = '공개 예정' | '지금 볼 수 있어요' | '극장 상영중' | '극장 개봉예정'
+export interface Hit { w: Work; kind: HitKind }
+
+/** 작품명에 검색어가 들어간 작품 (공백·문장부호 무시). 앞부분이 맞는 것 먼저, 최대 8개 */
+export function search(d: HomeData, q: string): Hit[] {
+  const n = norm(q)
+  if (!n) return []
+  const pools: [HitKind, Work[]][] = [
+    ['공개 예정', d.ott.upcoming], ['지금 볼 수 있어요', d.ott.available], ['극장 상영중', d.theater.now], ['극장 개봉예정', d.theater.soon],
+  ]
+  const seen = new Set<string>()
+  const hits: Hit[] = []
+  for (const [kind, list] of pools) {
+    for (const w of list) {
+      const t = norm(w.title)
+      if (!t.includes(n) || seen.has(t)) continue
+      seen.add(t)
+      hits.push({ w, kind })
+    }
+  }
+  return hits.sort((a, b) => Number(norm(b.w.title).startsWith(n)) - Number(norm(a.w.title).startsWith(n))).slice(0, 8)
+}
+
 export function useOtt(data: () => HomeData) {
   const platform = ref('전체'), cat = ref('전체'), showAll = ref(false), showAllUp = ref(false)
-  const ok = (w: Work) =>
-    (platform.value === '전체' || (w.platforms ?? [w.platform]).includes(platform.value)) && (cat.value === '전체' || w.type === cat.value)
+  const ok = (w: Work) => onPlatform(w, platform.value) && (cat.value === '전체' || w.type === cat.value)
   // 공개 예정은 6개까지 (오른쪽 포스터 3줄과 높이가 비슷하게), 나머지는 "더 보기"
   const allUpcoming = computed(() => data().ott.upcoming.filter(ok).sort(byDate))
   const upcoming = computed(() => (showAllUp.value ? allUpcoming.value : allUpcoming.value.slice(0, 6)))

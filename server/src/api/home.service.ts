@@ -17,6 +17,29 @@ export function vaguePast(text: string | undefined, today: string) {
 /** 메인(기대작 영역)에 올릴 작품: 드라마, 그리고 기안장 같은 시즌제 예능. 런닝맨 같은 장수 예능·해외 장수 드라마는 뺀다 */
 export const main = (w: { type: string; longRun?: boolean }) => (w.type === '드라마' || w.type === '예능') && !w.longRun
 
+/** 플랫폼이 번갈아 나오게: 각 플랫폼 1등 → 각 플랫폼 2등 → … (같은 작품명은 한 번만). 순서는 원래 목록 기준 */
+export function interleave<T extends { platform: string; title: string }>(list: T[]): T[] {
+  const by = new Map<string, T[]>()
+  for (const w of list) {
+    const l = by.get(w.platform)
+    if (l) l.push(w)
+    else by.set(w.platform, [w])
+  }
+  const out: T[] = []
+  const titles = new Set<string>()
+  const longest = Math.max(0, ...[...by.values()].map((l) => l.length))
+  for (let i = 0; i < longest; i++) {
+    for (const l of by.values()) {
+      const w = l[i]
+      if (w && !titles.has(w.title)) {
+        titles.add(w.title)
+        out.push(w)
+      }
+    }
+  }
+  return out
+}
+
 const norm = (t: string) => t.replace(/시즌|season/gi, '').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
 
 /** 같은 작품이 여러 플랫폼에 있으면 하나로 묶고 platforms에 모두 담는다 (화면: "넷플릭스 +2"). 대표는 TMDB 날짜가 있는 쪽 */
@@ -61,27 +84,21 @@ export class HomeService {
     const works = s.works.filter((w) => ours(w) && (w.tmdbId || w.sources.length >= 2))
     const available = s.ottAvailable.filter(ours)
     const upcoming = group(works.filter((w) => w.status === 'upcoming' && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out))
-    // 기대작(OTT만): 30일 안에 공개되는 드라마·시즌제 예능 중 기사가 많이 나온 순
+    // 메인 목록은 화면에서 플랫폼별로 걸러 10개를 보여 주므로 넉넉히(최대 40개) 순서만 정해 보낸다
+    // 기대작(OTT만): 60일 안에 공개되는 드라마·시즌제 예능 중 기사가 많이 나온 순
     const soon = upcoming
-      .filter((w) => main(w) && w.date && w.date >= t && w.date <= addDays(t, 30))
+      .filter((w) => main(w) && w.date && w.date >= t && w.date <= addDays(t, 60))
       .sort((a, b) => (b.buzz ?? 0) - (a.buzz ?? 0) || a.date!.localeCompare(b.date!))
-      .slice(0, 4)
+      .slice(0, 40)
     const tn = s.theater.now.map(out)
     const oa = group(available.map(out))
-    // 지금 인기(OTT만): 드라마·시즌제 예능 중 한국어 작품 → 드라마 → TMDB 인기 점수 순.
-    // 플랫폼이 겹치지 않게 고르고, 4개가 안 되면 나머지로 채운다
+    // 지금 인기(OTT만): 드라마·시즌제 예능 중 한국어 작품 → 드라마 → TMDB 인기 점수 순, 플랫폼이 번갈아 나오게
     const picks = available
       .filter(main)
       .sort((a, b) => Number(!!b.ko) - Number(!!a.ko) || Number(b.type === '드라마') - Number(a.type === '드라마') || (b.pop ?? 0) - (a.pop ?? 0))
-    const now: Work[] = []
-    for (const pass of [true, false]) {
-      for (const w of picks) {
-        if (now.length === 4 || now.some((x) => x.title === w.title) || (pass && now.some((x) => x.platform === w.platform))) continue
-        now.push(out(w))
-      }
-    }
+    const now = interleave(picks).slice(0, 40).map(out)
 
-    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source, via: w.via })
+    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source, via: w.via, poster: w.poster })
     const events = group([...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev), true)
 
     return {

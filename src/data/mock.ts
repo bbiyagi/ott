@@ -20,7 +20,7 @@ export interface Work {
   tmdbUrl?: string
 }
 
-export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb' }
+export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
 
 /** 상세 창 (/api/works/:id) */
 export interface WorkDetail extends Work { sources: { title: string; link: string; date: string }[] }

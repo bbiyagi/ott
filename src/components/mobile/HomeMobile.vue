@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, isStale, platformLabel, platformTitle, refreshMsg, refreshing, useOtt, when, type HotMode } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, isStale, platformLabel, platformTitle, refreshMsg, refreshing, useHot, useOtt, when } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vBg } from '../../lib/lazy'
@@ -11,6 +11,7 @@ import { vBg } from '../../lib/lazy'
 import Seg from '../shared/Seg.vue'
 import NewsBadge from '../shared/NewsBadge.vue'
 import RefreshButton from '../shared/RefreshButton.vue'
+import SearchBox from '../shared/SearchBox.vue'
 
 // 모바일 큰 배너는 세로 포스터를 더 큰 크기(w780)로
 const hiRes = (url?: string) => url?.replace('/w500/', '/w780/')
@@ -25,10 +26,10 @@ function go(s: Screen) {
   window.scrollTo(0, 0)
 }
 
-const hotMode = ref<HotMode>('soon')
-const hot = computed(() => props.data.hot[hotMode.value])
+// 메인: 공개 예정/지금 인기 × 플랫폼, 10개 = 배너 1 + 목록 9
+const { mode: hotMode, platform: hotPlatform, list: hot, title: hotTitle } = useHot(() => props.data)
 const meta = (w: Work) => hotMeta(w, hotMode.value)
-const title = computed(() => ({ hot: hotMode.value === 'soon' ? '곧 공개되는 기대작' : '지금 인기 있는 작품', cal: '공개 일정', ott: 'OTT', theater: '극장' })[screen.value])
+const title = computed(() => ({ hot: hotTitle.value, cal: '공개 일정', ott: 'OTT', theater: '극장' })[screen.value])
 
 const { view, y, m, sel, week, on, grid, pick, step, toToday, isToday, numCls } = useCalendar(() => props.data.events)
 const calTitle = computed(() => {
@@ -52,6 +53,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
       <div class="head-right">
         <span v-if="!refreshing && !refreshMsg && !isStale(data.updatedAt)" class="meta">{{ longDay(TODAY) }}</span>
         <RefreshButton :updated-at="data.updatedAt" compact />
+        <SearchBox :data="data" compact />
       </div>
     </header>
 
@@ -60,6 +62,11 @@ const movies = computed(() => props.data.theater[theaterTab.value])
 
       <div v-if="screen === 'hot'" class="col20 rise">
         <Seg v-model="hotMode" grid :options="[['soon', '공개 예정'], ['now', '지금 인기']]" label="기대작 구분" />
+        <div class="bleed">
+          <div role="group" aria-label="플랫폼별 보기" class="chips hscroll">
+            <button v-for="p in PLATFORMS" :key="p" type="button" class="chip" :aria-pressed="hotPlatform === p" @click="hotPlatform = p">{{ p }}</button>
+          </div>
+        </div>
         <template v-if="hot.length">
           <article class="hero lead">
             <Transition name="xfade">
@@ -70,7 +77,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <div class="shade"></div>
             <span :key="`b-${hot[0].id}`" class="hero-badge rise">{{ hotTag(hot[0], hotMode) }}</span>
             <div :key="`i-${hot[0].id}`" class="lead-info rise">
-              <span class="why on-image">{{ hotWhy(hot[0], hotMode) }}</span>
+              <span class="why on-image">{{ hotWhy(hot[0], hotMode, hotPlatform) }}</span>
               <span class="lead-title">{{ hot[0].title }}</span>
               <p v-if="hot[0].overview" class="blurb on-image">{{ hot[0].overview }}</p>
               <span class="row-chip">
@@ -86,7 +93,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div class="hot-body col3">
                 <span class="tag">{{ hotTag(h, hotMode) }}</span>
                 <span class="hot-title">{{ h.title }}</span>
-                <span class="why small">{{ hotWhy(h, hotMode) }}</span>
+                <span class="why small">{{ hotWhy(h, hotMode, hotPlatform) }}</span>
                 <p v-if="h.overview" class="blurb small">{{ h.overview }}</p>
                 <span class="row-chip">
                   <span class="meta small" :title="platformTitle(h)">{{ meta(h) }}</span>
@@ -96,7 +103,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             </li>
           </ul>
         </template>
-        <p v-else class="empty">아직 정리된 작품이 없어요.</p>
+        <p v-else class="empty">{{ hotPlatform === '전체' ? '아직 정리된 작품이 없어요.' : `${hotPlatform}의 ${hotMode === 'soon' ? '공개 예정작' : '인기작'}이 아직 없어요.` }}</p>
       </div>
 
       <div v-else-if="screen === 'cal'" class="col16 rise">
@@ -146,7 +153,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <ul class="list8">
             <li v-for="(e, j) in dayItems" :key="`${sel.getTime()}-${e.id}`" class="rise" :style="{ '--i': j }">
               <button type="button" class="card day-item" @click="openDetail(e)">
-                <span class="ph"></span>
+                <span class="ph" v-bg="e.poster"></span>
                 <span class="col2">
                   <span class="row-chip">
                     <span class="t16">{{ e.title }}</span>
@@ -246,7 +253,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
 .m { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 0 20px; min-height: 56px; display: flex; align-items: center; justify-content: space-between; }
 .logo { font-size: 20px; flex: 0 0 auto; }
-.head-right { display: flex; align-items: center; gap: 8px; min-width: 0; margin-left: 12px; }
+.head-right { display: flex; align-items: center; gap: 4px; min-width: 0; margin-left: 12px; }
 main { flex: 1 1 auto; padding: 8px 20px 32px; display: flex; flex-direction: column; gap: 24px; }
 h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; }
 .h18 { font-size: 18px; font-weight: 700; }
