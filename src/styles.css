@@ -51,6 +51,11 @@ button.tile, button.mitem, button.witem, button.day-item { font: inherit; color:
 button.tile { padding: 0; background: none; width: 100%; }
 button.tile:hover, button.mitem:hover, button.witem:hover, button.day-item:hover { color: var(--accent); }
 .ph { background: var(--stripe); border-radius: 8px; }
+/* 대체 이미지 (lazy.ts): 이미지가 없거나 못 불러오면 색 + 제목. 작은 썸네일은 색만 */
+.ph.gen { position: relative; overflow: hidden; }
+.ph.gen::after { content: attr(data-art); position: absolute; left: 8%; right: 8%; bottom: 8%; font-size: 11px; font-weight: 800; line-height: 1.25; letter-spacing: -0.3px; color: rgba(237, 237, 234, 0.92); word-break: keep-all; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+.ph.poster.gen::after { font-size: 16px; }
+.ph.poster.gen::before { content: attr(data-plat); position: absolute; top: 8%; left: 8%; font-size: 11px; font-weight: 700; color: rgba(237, 237, 234, 0.6); }
 .ph-label { font-size: 11px; color: var(--mute); font-family: ui-monospace, monospace; }
 .poster { position: relative; aspect-ratio: 2/3; border-radius: 12px; display: flex; align-items: flex-end; padding: 10px; }
 .tile { display: flex; flex-direction: column; text-decoration: none; color: var(--text); }

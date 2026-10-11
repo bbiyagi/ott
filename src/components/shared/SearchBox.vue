@@ -71,7 +71,7 @@ function close() {
           v-for="(h, i) in hits" :id="`q-${i}`" :key="h.w.id + h.kind" role="option" :aria-selected="i === active"
           @mousedown.prevent @mouseenter="active = i" @click="pick(h)"
         >
-          <span class="ph" v-bg="h.w.poster"></span>
+          <span class="ph" v-bg="h.w"></span>
           <span class="txt">
             <b>{{ h.w.title }}</b>
             <small>{{ sub(h) }}</small>

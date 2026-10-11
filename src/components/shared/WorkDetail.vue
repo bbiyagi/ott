@@ -32,7 +32,7 @@ const shortDate = (s: string) => md(s.slice(0, 10))
 <template>
   <dialog ref="dlg" class="detail" aria-labelledby="detail-title" @close="closeDetail" @click.self="dlg?.close()">
     <article v-if="detail" class="sheet">
-      <div class="art" :style="bg(detail.backdrop ?? detail.poster)">
+      <div class="art" :style="bg(detail.backdrop ?? detail.poster, detail.title)">
         <button type="button" class="close" aria-label="닫기" @click="dlg?.close()">✕</button>
       </div>
       <div class="body">

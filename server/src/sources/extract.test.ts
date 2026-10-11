@@ -1,7 +1,7 @@
 // 규칙 추출 확인 (실제 기사 제목·요약에서 가져온 예): npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { extract, pickDate, pickWhen, timeFor, vague, weeklyFor, weeklyIn, weeklyTitle } from './extract.service.js'
+import { extract, pickDate, pickWhen, ottMentions, timeFor, vague, weeklyFor, weeklyIn, weeklyTitle } from './extract.service.js'
 
 const art = (pub: string, title: string, description: string) => ({ title, description, link: title, pubDate: `${pub}T03:00:00Z` })
 const one = (pub: string, title: string, description: string) =>
@@ -88,11 +88,22 @@ test('매주 공개 일정 (OTT 공개만)', () => {
   assert.equal(weeklyIn('매주 9일 금요일 밤 9시 50분 공개'), null)
 })
 
-test('TV 방송 날짜는 공개일로 쓰지 않는다', () => {
+test('TV 첫 방송은 방송 후 공개로', () => {
   const a = (d: string) => extract([{ title: "디즈니+ '파이널 테이블'", description: d, link: 'z', pubDate: '2026-10-05T09:00:00+09:00' }])
-  assert.deepEqual(a("'파이널 테이블'은 오는 24일 오후 10시 40분 JTBC에서 첫 방송된다."), [])
+  // TV 첫 방송은 "방송 후 공개"로, 시각은 버린다
+  const tv = a("'파이널 테이블'은 오는 24일 오후 10시 40분 JTBC에서 첫 방송된다.")[0]
+  assert.deepEqual([tv?.date, tv?.time, tv?.after], ['2026-10-24', undefined, 'JTBC'])
   // 기사 요약에서 채널 이름이 빠져도 "첫 방송"은 TV 방송
-  assert.deepEqual(a("디즈니+ '파이널 테이블'은 오는 24일 오후 10시 40분에 첫 방송된다."), [])
+  assert.equal(a("디즈니+ '파이널 테이블'은 오는 24일 오후 10시 40분에 첫 방송된다.")[0]?.after, 'TV')
+  // TV 기사에서 OTT가 다른 문장(배우의 예전 작품)에만 나오면 플랫폼으로 쓰지 않는다
+  assert.deepEqual(extract([{ title: "안효섭 '파이널 테이블' 셰프 변신", description: "넷플릭스 '사내맞선'으로 사랑받은 안효섭. 넷플릭스에서 시청자를 만났던 그. '파이널 테이블'은 24일 JTBC에서 첫 방송된다.", link: 'q', pubDate: '2026-10-05T09:00:00+09:00' }]), [])
+  // "OTT로는 …에서 시청" 문장의 OTT마다
+  assert.deepEqual(extract([{ title: "'신인감독 김연경2' 오늘 첫 방송", description: "MBC '신인감독 김연경2'는 11일 오후 9시 10분 첫 방송된다. OTT로는 넷플릭스, 티빙에서 시청할 수 있다.", link: 'k', pubDate: '2026-10-10T09:00:00+09:00' }]).map((x) => [x.platform, x.date, x.after]),
+    [['넷플릭스', '2026-10-11', 'MBC'], ['티빙', '2026-10-11', 'MBC']])
+  // 회차 방송 소식은 새 작품이 아니다
+  assert.deepEqual(a("디즈니+ '파이널 테이블' 3회는 오는 26일 JTBC에서 방송된다."), [])
+  // 같은 글에 OTT 공개일이 있으면 그쪽
+  assert.deepEqual(a("'파이널 테이블'은 24일 JTBC에서 첫 방송된다. 디즈니+ '파이널 테이블'은 25일 공개된다.").map((x) => [x.date, x.after]), [['2026-10-25', undefined]])
   assert.equal(a("디즈니+ '파이널 테이블'은 25일 오후 4시 공개된다.")[0]?.date, '2026-10-25')
 })
 
@@ -124,4 +135,16 @@ test('작품별 공개 시각 (뉴스·블로그)', () => {
   assert.equal(timeFor('파이널 테이블', '2026-10-25', [b('x', "'파이널 테이블'은 24일 오후 5시 공개된다.")]), undefined)
   // 여러 글이 다르면 가장 많이 나온 시각
   assert.equal(timeFor('꿀알바', '2026-10-30', [b('a', "'꿀알바'는 30일 오후 5시 공개된다."), b('b', "'꿀알바'는 30일 오후 5시 공개."), b('c', "'꿀알바'는 30일 오후 4시 공개.")]), '17:00')
+})
+
+test('방송 작품이 OTT에도 올라온다는 글 수', () => {
+  const b = (link: string, title: string, description: string) => ({ title, description, link, pubDate: '2026-10-11T00:00:00+09:00' })
+  const arts = [
+    b('1', '신인감독 김연경2 정보', '방송: MBC 매주 일요일 밤 9시 10분 OTT: 웨이브, 티빙, 넷플릭스'),
+    b('2', '신인감독 김연경2 첫방', '매주 일요일 오후 9시 10분에 방송되며, OTT로는 티빙, 웨이브에서 시청할 수 있다.'),
+    b('3', '김연경 인터뷰', '신인감독 김연경2 출연. 넷플릭스 예능 다른 작품도 화제'),
+    b('4', '김연경 근황', '신인감독 김연경2 촬영 중. 넷플릭스 새 예능도 공개된다'),
+  ]
+  assert.equal(ottMentions('신인감독 김연경2', '티빙', arts), 2)
+  assert.equal(ottMentions('신인감독 김연경2', '넷플릭스', arts), 1) // 3·4번 글의 넷플릭스는 다른 작품 이야기
 })

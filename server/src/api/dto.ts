@@ -9,6 +9,7 @@ export interface Work {
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. 애매하면 null + dateText
   time?: string // 'HH:MM' KST 공개 시각. 기사에 적혀 있을 때만
+  after?: string // TV 방송 채널: 방송과 OTT에 함께 나오는 작품의 "MBC 방송 후 공개" (방송 시각은 time에 넣지 않는다)
   next?: string // 다음 회차 OTT 공개일 (TMDB, OTT 오리지널만)
   nextTime?: string // 다음 회차 공개 시각 'HH:MM' (기사·블로그 또는 매주 일정)
   weekly?: Weekly // 시리즈 정기 공개: 매주 토·일 오후 9시 10분 (기사 기준)
@@ -26,7 +27,7 @@ export interface Work {
   via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
 }
 
-export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; time?: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
+export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; time?: string; after?: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
 
 /** 상세 창: 줄거리, 출처 기사 목록, TMDB 링크 */
 export interface WorkDetail extends Work { sources: Source[] }
@@ -47,6 +48,7 @@ export interface StoredWork extends Work {
   status: 'upcoming' | 'released'
   sources: Source[] // 기사 제목·링크·날짜만. 본문은 저장하지 않는다
   dateFrom?: string // 지금 날짜를 정한 기사의 날짜
+  ottSeen?: number // 방송 작품: 그 OTT에도 올라온다고 말한 뉴스·블로그 수 (작품명 검색)
   dateBy?: 'news' | 'tmdb' // 지금 날짜의 출처. TMDB 날짜는 기사로 덮지 않는다
   tmdbId?: number | null // null = 찾아봤지만 없음
   tmdbMedia?: 'movie' | 'tv'

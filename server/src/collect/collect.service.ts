@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import type { Store, StoredWork, Weekly, Work } from '../api/dto.js'
 import { addDays, has, today } from '../config.js'
 import { StoreService } from '../store/store.service.js'
-import { ExtractService, timeFor, weekly, weeklyFor, type ExtractedWeekly } from '../sources/extract.service.js'
+import { ExtractService, ottMentions, timeFor, weekly, weeklyFor, type ExtractedWeekly } from '../sources/extract.service.js'
 import { KobisService } from '../sources/kobis.service.js'
 import { NaverNewsService } from '../sources/naver-news.service.js'
 import { TmdbService, type Media } from '../sources/tmdb.service.js'
@@ -16,11 +16,11 @@ const KEYWORDS = [...QUERY_NAMES.flatMap((p) => SUFFIXES.map((s) => `${p} ${s}`)
 const PER_RUN = 3000 // 한 번에 처리할 새 기사 수 (규칙 추출이라 비용 없음)
 const SEEN_MAX = 20000 // 링크 대신 짧은 해시로 저장
 const ENRICH_MAX = 150 // 한 번에 TMDB에서 찾아볼 작품 수
-const RULES = 3 // 추출 규칙이 바뀌면 올린다. 다음 수집 때 기사를 새 규칙으로 다시 읽는다 (3: TV 방송 날짜·시각을 OTT 공개로 쓰지 않음, 글에 TV 채널이 있으면 "첫 방송"도 TV)
+const RULES = 4 // 추출 규칙이 바뀌면 올린다. 다음 수집 때 기사를 새 규칙으로 다시 읽는다 (4: TV 첫 방송 날짜는 "방송 후 공개"로, 방송 시각은 쓰지 않음)
 const REFRESH_GAP = 10 * 60_000 // 새로고침 버튼 최소 간격
 
 export interface Report { articles: number; newArticles: number; extracted: number; tmdbSeries: number; newWorks: number; updated: number; released: number; skipped: string[] }
-interface Candidate { title: string; platform: string; type: string; date: string | null; time?: string; dateText?: string | null }
+interface Candidate { title: string; platform: string; type: string; date: string | null; time?: string; after?: string; dateText?: string | null }
 
 /** 같은 작품 판단: 작품명(공백·문장부호 제거) + 플랫폼 */
 export const workKey = (title: string, platform: string) =>
@@ -94,8 +94,9 @@ export class CollectService {
       if (w.status === 'upcoming' && w.date && w.date <= addDays(t, -7)) { w.status = 'released'; report.released++ }
     }
     await step('OTT 서비스 중', has('tmdb'), async () => { s.ottAvailable = await this.tmdb.available(t) })
-    await step('공개 시각·매주 일정', has('naver'), () => this.schedules(s, t))
+    await step('공개 시각·매주 일정', has('naver'), () => this.schedules(s, t, report))
     await step('극장', has('kobis') || has('tmdb'), async () => { s.theater = await this.theater(t) })
+    await step('이미지 보강', has('naver'), () => this.images(s, t))
 
     s.lastReport = { articles: report.articles, newWorks: report.newWorks, skipped: report.skipped }
     await this.store.save(s)
@@ -136,7 +137,7 @@ export class CollectService {
    * 목록의 모든 작품(공개 예정·오늘 공개·지금 볼 수 있어요)을 작품명으로 뉴스·블로그에서 다시 찾아
    * 공개 시각, 다음 회차 시각, 매주 공개 일정을 채운다 (작품마다 4회: 뉴스·블로그 × "공개"·"매주")
    */
-  private async schedules(s: Store, t: string) {
+  private async schedules(s: Store, t: string, report: Report) {
     const key = (title: string) => workKey(title, '').slice(0, -1)
     const jobs = new Map<string, { title: string; works: Work[] }>()
     for (const w of [...s.works.filter((w) => w.status === 'upcoming' || w.date === t), ...s.ottAvailable]) {
@@ -144,22 +145,63 @@ export class CollectService {
       if (!jobs.has(k)) jobs.set(k, { title: w.title, works: [] })
       jobs.get(k)!.works.push(w)
     }
-    for (const { title, works } of jobs.values()) {
+    // 작품 3개씩 동시에 찾는다: 검색 수는 그대로, 수집 시간(Vercel 300초 제한)만 줄인다. 네이버 초당 한도 안
+    const queue = [...jobs.values()]
+    const worker = async () => {
+      for (let job = queue.shift(); job; job = queue.shift()) await lookup(job)
+    }
+    const lookup = async ({ title, works }: { title: string; works: Work[] }) => {
       const series = works.some((w) => w.type !== '영화')
-      const found = [
-        ...(await this.naver.search(`${title} 공개`)),
-        ...(await this.naver.search(`${title} 공개 시간`, 'blog')),
-        // 블로그에는 "방송: MBC 매주 일요일 밤 9시 10분 · OTT: 넷플릭스"처럼 편성 정리 글이 많다
-        ...(series ? [...(await this.naver.search(`${title} 매주`)), ...(await this.naver.search(`${title} 매주 공개`, 'blog'))] : []),
-      ]
+      const news = [...(await this.naver.search(`${title} 공개`)), ...(series ? await this.naver.search(`${title} 매주`) : [])]
+      // 블로그에는 "방송: MBC 매주 일요일 밤 9시 10분 · OTT: 넷플릭스"처럼 편성 정리 글이 많다
+      const blogs = [...(await this.naver.search(`${title} 공개 시간`, 'blog')), ...(series ? await this.naver.search(`${title} 매주 공개`, 'blog') : [])]
+      const found = [...news, ...blogs]
+      // 작품명으로 찾은 뉴스도 같은 규칙으로 날짜·플랫폼을 뽑아 출처로 더한다 (키워드 검색에 한 건만 걸린 작품 보강)
+      const fresh = news.filter((a, i) => news.findIndex((b) => b.link === a.link) === i)
+      for (const it of await this.extract.run(fresh)) {
+        if (key(it.title) !== key(title)) continue
+        const a = fresh[it.article]
+        this.merge(s, it, { title: a.title, link: a.link, date: a.pubDate }, t, report)
+      }
       if (series) addWeekly(s, weeklyFor(title, found, t))
       const wk = s.weekly?.[key(title)]
       for (const w of works) {
+        // 방송 작품이 이 OTT에도 올라온다는 글 수 (화면에 보여 줄지 정할 때)
+        if ((w as StoredWork).after) (w as StoredWork).ottSeen = ottMentions(title, w.platform, found)
         // 최근(2주 안)·앞으로의 공개일만. 기사로 이미 정한 시각은 그대로
-        if (w.date && w.date >= addDays(t, -14) && !w.time) w.time = timeFor(title, w.date, found)
+        if (w.date && w.date >= addDays(t, -14) && !w.time) {
+          w.time = timeFor(title, w.date, found)
+          if (w.time) w.after = undefined // 그날 OTT 공개 시각을 찾으면 OTT 공개일
+        }
         if (w.next) w.nextTime = timeFor(title, w.next, found) ?? weeklyTime(wk, w.next)
       }
     }
+    await Promise.all([worker(), worker(), worker()])
+  }
+
+  /**
+   * TMDB에 이미지가 없는 작품(공개 예정·서비스 중·극장)은 네이버 이미지 검색으로 찾는다.
+   * 이미지 제목에 작품명이 있고 모양이 맞는 것만: 포스터는 세로, 배너는 가로(800px 이상). 없으면 화면이 대체 이미지를 그린다
+   */
+  private async images(s: Store, t: string) {
+    // 원작 책 표지·상품 사진은 작품 포스터가 아니다
+    const SHOP = /kyobobook|yes24|aladin|ypbooks|interpark|coupang\.com|gmarket|11st|auction|ridibooks|millie/i
+    const list: Work[] = [
+      ...s.works.filter((w) => w.status === 'upcoming' || w.date === t),
+      ...s.ottAvailable, ...s.theater.now, ...s.theater.soon,
+    ].filter((w) => !w.poster || !w.backdrop)
+    const n = (x: string) => workKey(x, '').slice(0, -1)
+    const pick = (found: { title: string; url: string; w: number; h: number }[], title: string, ok: (w: number, h: number) => boolean) =>
+      found.find((x) => n(x.title).includes(n(title)) && ok(x.w, x.h) && !SHOP.test(x.url))?.url
+    const queue = [...list]
+    const worker = async () => {
+      for (let w = queue.shift(); w; w = queue.shift()) {
+        if (n(w.title).length < 2) continue
+        if (!w.poster) w.poster = pick(await this.naver.images(`${w.title} 포스터`), w.title, (x, y) => y >= x * 1.2 && x >= 300)
+        if (!w.backdrop) w.backdrop = pick(await this.naver.images(`${w.title} 스틸컷`), w.title, (x, y) => x >= y * 1.3 && x >= 800)
+      }
+    }
+    await Promise.all([worker(), worker(), worker()])
   }
 
   /** TMDB에 등록된 플랫폼 오리지널 공개 예정 시리즈. 기사보다 날짜·구분이 정확해서 덮어쓴다 */
@@ -185,7 +227,7 @@ export class CollectService {
     const by = src.title === 'TMDB' ? 'tmdb' : 'news'
     if (!w) {
       const nw: StoredWork = {
-        id: hash(key, 12), key, title, platform: it.platform, type: it.type, date, time: date ? it.time : undefined, dateText: date ? undefined : it.dateText ?? undefined,
+        id: hash(key, 12), key, title, platform: it.platform, type: it.type, date, time: date ? it.time : undefined, after: date ? it.after : undefined, dateText: date ? undefined : it.dateText ?? undefined,
         status: 'upcoming', sources: [src], dateFrom: src.date, dateBy: by,
       }
       s.works.push(nw)
@@ -195,14 +237,19 @@ export class CollectService {
     if (!w.sources.some((x) => x.link === src.link)) w.sources.push(src)
     // TMDB 날짜는 기사로 덮지 않는다. 기사끼리는 더 최근 기사의 정확한 날짜 우선, 애매한 날짜로 정확한 날짜를 덮지 않는다
     const locked = w.dateBy === 'tmdb' && by === 'news'
-    if (date && !locked && (!w.date || by === 'tmdb' || src.date >= (w.dateFrom ?? ''))) {
+    // OTT 공개일 기사(after 없음)는 "방송 후 공개" 날짜보다 우선한다. 기사 날짜 순서와 상관없이
+    const ott = !it.after, wOtt = !w.after
+    const better = !w.date || by === 'tmdb' || (ott && !wOtt) || (ott === wOtt && src.date >= (w.dateFrom ?? ''))
+    if (date && !locked && better) {
       if (w.date !== date) report.updated++
       // 시각은 그 날짜를 말한 기사에서만. 날짜가 바뀌면 옛 시각은 버리고, 같은 날이면 시각 없는 소식(TMDB)이 지우지 않는다
       const time = it.time ?? (w.date === date ? w.time : undefined)
-      Object.assign(w, { date, time, dateText: undefined, dateFrom: src.date, dateBy: by })
+      // TMDB 날짜·OTT 시각이 있으면 OTT 공개일로 본다
+      const after = time || by === 'tmdb' ? undefined : it.after
+      Object.assign(w, { date, time, after, dateText: undefined, dateFrom: src.date, dateBy: by })
       if (w.status === 'released' && date > t) w.status = 'upcoming'
     } else if (date && date === w.date && it.time && !w.time) {
-      w.time = it.time // TMDB가 정한 날짜와 같은 날이면 기사의 시각을 붙인다
+      Object.assign(w, { time: it.time, after: undefined }) // TMDB가 정한 날짜와 같은 날이면 기사의 시각을 붙인다
     } else if (!date && !w.date && it.dateText) {
       w.dateText = it.dateText
     }

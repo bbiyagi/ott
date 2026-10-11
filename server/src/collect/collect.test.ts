@@ -17,7 +17,8 @@ function setup() {
   let items: Omit<ExtractedWork, 'article'>[] = []
   const svc = new CollectService(
     { load: async () => state, save: async () => {} } as never,
-    { search: async () => articles } as never,
+    // 키워드 검색만 기사를 돌려준다 (작품명 검색 "오징어 게임 3 공개"는 빈 결과)
+    { search: async (q: string) => (q.includes('오징어') ? [] : articles) } as never,
     { run: async (a: Article[]) => items.map((it) => ({ ...it, article: 0 })).slice(0, a.length) } as never,
     {} as never,
     {} as never,

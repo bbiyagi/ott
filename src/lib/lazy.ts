@@ -16,24 +16,42 @@ const io =
         { rootMargin: '400px' },
       )
 
-function show(el: HTMLElement) {
-  el.dataset.seen = '1'
-  if (el.dataset.bg) el.style.background = `center/cover no-repeat url("${el.dataset.bg}")`
+/** 이미지가 없을 때 그리는 대체 이미지: 제목으로 정한 색 + 제목·플랫폼 글자 (CSS .gen) */
+export const hue = (t: string) => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7)
+export const genBg = (t: string) =>
+  `radial-gradient(120% 90% at 0% 0%, hsl(${hue(t)} 55% 32%), transparent 60%), linear-gradient(160deg, hsl(${(hue(t) + 40) % 360} 45% 18%), #121214)`
+
+function art(el: HTMLElement) {
+  el.classList.add('gen')
+  el.style.background = genBg(el.dataset.art ?? '')
 }
 
-function set(el: HTMLElement, url?: string) {
-  if (!url) {
-    delete el.dataset.bg
-    el.style.background = '' // 줄무늬 자리표시로
-    return
-  }
-  el.dataset.bg = url
+function show(el: HTMLElement) {
+  el.dataset.seen = '1'
+  const url = el.dataset.bg
+  if (!url) return art(el)
+  // 미리 받아 보고 실패하면(외부 사이트가 막는 경우 등) 대체 이미지
+  const img = new Image()
+  img.referrerPolicy = 'no-referrer'
+  img.onload = () => el.dataset.bg === url && (el.classList.remove('gen'), (el.style.background = `center/cover no-repeat url("${url}")`))
+  img.onerror = () => el.dataset.bg === url && art(el)
+  img.src = url
+}
+
+type Pic = { poster?: string; title: string; platform?: string }
+
+function set(el: HTMLElement, v?: Pic) {
+  el.dataset.art = v?.title ?? ''
+  el.dataset.plat = v?.platform && v.platform !== '극장' ? v.platform : ''
+  if (v?.poster) el.dataset.bg = v.poster
+  else delete el.dataset.bg
   if (!io || el.dataset.seen) show(el)
   else io.observe(el)
 }
 
-export const vBg: Directive<HTMLElement, string | undefined> = {
+// v-bg="작품": 포스터, 없거나 못 불러오면 대체 이미지
+export const vBg: Directive<HTMLElement, Pic | undefined> = {
   mounted: (el, { value }) => set(el, value),
-  updated: (el, { value, oldValue }) => value !== oldValue && set(el, value),
+  updated: (el, { value, oldValue }) => (value?.poster !== oldValue?.poster || value?.title !== oldValue?.title) && set(el, value),
   unmounted: (el) => io?.unobserve(el),
 }

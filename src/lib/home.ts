@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { mock, type HomeData, type Work } from '../data/mock'
 import { TODAY, fmt, parse } from './date'
+import { genBg } from './lazy'
 
 export type HotMode = 'soon' | 'now'
 
@@ -67,14 +68,11 @@ export const clock = (t?: string) => {
   const [h, m] = t.split(':').map(Number)
   return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}시${m ? ` ${m}분` : ''}`
 }
-/** OTT 공개 일정: "매주 월 오후 6시 공개" / 방송 뒤 올라오는 작품은 "매주 일 MBC 오후 9시 10분 방송 후 공개" (시각은 방송 시각) */
+/** OTT 공개 일정: "매주 월 오후 6시 공개". 방송과 함께 나오는 작품은 시각이 방송 시각이라 요일만 ("매주 일 공개") */
 export const weeklyLabel = (w: Work) => {
   const x = w.weekly
   if (!x) return ''
-  const per = x.per ? ` ${x.per}편씩` : ''
-  return x.after
-    ? [`매주 ${x.days}`, x.after, clock(x.time), `방송 후 공개${per}`].filter(Boolean).join(' ')
-    : [`매주 ${x.days}`, clock(x.time), `공개${per}`].filter(Boolean).join(' ')
+  return [`매주 ${x.days}`, x.after ? '' : clock(x.time), '공개', x.per ? `${x.per}편씩` : ''].filter(Boolean).join(' ')
 }
 /** 서비스 중인 작품이 OTT에 언제 올라오는지: "다음 화 10.18 (토) 오후 5시" / "10.9 (금) 오후 5시 공개" */
 // 지난 공개일은 최근 60일 것만 ("1.23 (금) 공개"가 앞으로의 날짜처럼 읽히지 않게)
@@ -82,10 +80,12 @@ export const airLabel = (w: Work) =>
   w.next
     ? ['다음 화', fmt(w.next), clock(w.nextTime)].filter(Boolean).join(' ')
     : w.date && parse(w.date).getTime() >= TODAY.getTime() - 60 * 864e5
-      ? [fmt(w.date), clock(w.time), '공개'].filter(Boolean).join(' ')
+      ? [fmt(w.date), openAt(w), '공개'].filter(Boolean).join(' ')
       : ''
+/** 공개 시각: "오후 5시". 방송과 함께 나오는 작품은 OTT 시각을 알 수 없어 비운다 */
+export const openAt = (w: { time?: string; after?: string }) => (w.after ? '' : clock(w.time))
 /** 10.15 (목) 오후 5시 */
-export const when = (w: Work) => (w.date ? [fmt(w.date), clock(w.time)].filter(Boolean).join(' ') : w.dateText ?? '미정')
+export const when = (w: Work) => (w.date ? [fmt(w.date), openAt(w)].filter(Boolean).join(' ') : w.dateText ?? '미정')
 // 날짜 있는 작품 먼저, "10월 중" 같은 작품은 맨 뒤
 export const byDate = (a: Work, b: Work) => (a.date ?? '9999').localeCompare(b.date ?? '9999')
 
@@ -106,7 +106,8 @@ export const hotWhy = (w: Work, mode: HotMode, platform = '전체') =>
 /** 티빙 +1 · 드라마 · 10.14 (수) 오후 5시 · 매주 수 오후 5시 공개 (지금 인기는 "다음 화 …") */
 export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, mode === 'soon' ? when(w) : airLabel(w), weeklyLabel(w)].filter(Boolean).join(' · ')
 
-export const bg = (url?: string) => (url ? { background: `center/cover no-repeat url("${url}")` } : undefined)
+// 큰 배너: 이미지 아래에 대체 그림을 깔아 두어 못 불러와도 빈칸이 아니다
+export const bg = (url?: string, title = '') => ({ background: `${url ? `center/cover no-repeat url("${url}"), ` : ''}${genBg(title)}` })
 
 export const PLATFORMS = ['전체', '넷플릭스', '티빙', '디즈니+', '쿠팡플레이']
 export const CATS = ['전체', '영화', '드라마', '예능', '애니메이션']

@@ -74,7 +74,7 @@ export class HomeService {
     const t = today()
 
     const out = (w: Work | StoredWork): Work => ({
-      id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, next: w.next, nextTime: w.nextTime, weekly: weeklyOf(s, w), dateText: w.dateText,
+      id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, after: w.after, next: w.next, nextTime: w.nextTime, weekly: weeklyOf(s, w), dateText: w.dateText,
       genre: w.genre, poster: w.poster, backdrop: w.backdrop, rank: w.rank, longRun: w.longRun,
       overview: w.overview, // 카드에 두 줄 소개로 보인다
       ...('sources' in w
@@ -89,7 +89,12 @@ export class HomeService {
     // 규칙 추출이라 잘못 뽑힌 제목이 섞일 수 있다. TMDB에 있거나 기사 2개 이상에 나온 작품만 보여 준다
     // 다루는 플랫폼만 (예전에 모은 웨이브 데이터는 여기서 빠진다)
     const ours = (w: { platform: string }) => (PLATFORMS as readonly string[]).includes(w.platform)
-    const works = s.works.filter((w) => ours(w) && (w.tmdbId || w.sources.length >= 2))
+    // "방송 후 공개" 작품은 TV 기사에서 OTT를 짐작한 것이라 글 2개 이상이 그 OTT를 말할 때만
+    // (출처 기사 2개 이상, 또는 작품명 검색에서 "OTT: 넷플릭스"처럼 말한 뉴스·블로그 2개 이상)
+    const news = (w: StoredWork) => w.sources.filter((x) => x.title !== 'TMDB').length
+    // 같은 작품이 다른 OTT에 공개일이 따로 있으면(파이널 테이블: 디즈니+ 25일) 방송 기준 짐작은 버린다
+    const direct = new Set(s.works.filter((w) => ours(w) && !w.after && w.date).map((w) => norm(w.title)))
+    const works = s.works.filter((w) => ours(w) && (w.after ? !direct.has(norm(w.title)) && (news(w) >= 2 || (w.ottSeen ?? 0) >= 2) : w.tmdbId || w.sources.length >= 2))
     const available = s.ottAvailable.filter(ours)
     // 오늘 공개작은 공개 확인 단계에서 released가 돼도 오늘 하루는 공개 예정·기대작에 남긴다
     const upcoming = group(works.filter((w) => (w.status === 'upcoming' || w.date === t) && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out))
@@ -109,7 +114,7 @@ export class HomeService {
       .sort((a, b) => Number(!!b.ko) - Number(!!a.ko) || Number(b.type === '드라마') - Number(a.type === '드라마') || (b.pop ?? 0) - (a.pop ?? 0))
     const now = interleave(picks).slice(0, 40).map(out)
 
-    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, time: w.time, source: w.source, via: w.via, poster: w.poster })
+    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, time: w.time, after: w.after, source: w.source, via: w.via, poster: w.poster })
     const events = group([...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev), true)
 
     return {
@@ -130,7 +135,7 @@ export class HomeService {
       const mates = s.works.filter((x) => norm(x.title) === norm(w.title) && (PLATFORMS as readonly string[]).includes(x.platform))
       const news = mates.flatMap((x) => x.sources).filter((x) => x.title !== 'TMDB')
       return {
-        id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, weekly: weeklyOf(s, w), dateText: w.dateText, poster: w.poster, backdrop: w.backdrop,
+        id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, after: w.after, weekly: weeklyOf(s, w), dateText: w.dateText, poster: w.poster, backdrop: w.backdrop,
         overview: w.overview, via: w.dateBy ?? 'news', platforms: [...new Set([w.platform, ...mates.map((x) => x.platform)])],
         tmdbUrl: w.tmdbId ? `https://www.themoviedb.org/${w.tmdbMedia ?? 'tv'}/${w.tmdbId}` : undefined,
         sources: [...new Map(news.map((x) => [x.link, x])).values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20),

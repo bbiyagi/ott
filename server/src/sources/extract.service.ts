@@ -15,6 +15,7 @@ export interface ExtractedWork {
   type: string
   date: string | null
   time?: string // 'HH:MM' (KST). 기사에 날짜 바로 뒤 시각이 적혀 있을 때만
+  after?: string // TV 방송 채널: TV와 OTT에 함께 나오는 작품. "MBC 방송 후 공개" (방송 시각은 OTT 시각이 아니라 버린다)
   dateText: string | null
 }
 
@@ -170,6 +171,20 @@ export function weeklyFor(title: string, articles: Article[], today = kstDate(ne
   return out
 }
 
+/**
+ * 방송 작품이 그 OTT에도 올라온다고 말하는 글 수: 작품명이 나오는 글에서 "OTT: 넷플릭스", "티빙에서 시청"처럼
+ * 플랫폼과 OTT·시청 표현이 한 문장에 있는 글 (블로그 편성 정리 글 포함)
+ */
+export function ottMentions(title: string, platform: string, articles: Article[]): number {
+  const n = normT(title), re = PLATFORM_RE.find(([p]) => p === platform)?.[1]
+  if (!re || n.length < 2) return 0
+  return new Set(articles.filter((a) => {
+    const all = `${a.title}. ${a.description}`
+    // "OTT: 넷플릭스" 또는 그 작품 이름과 함께 "넷플릭스에서 시청" (다른 넷플릭스 작품 이야기는 세지 않는다)
+    return normT(all).includes(n) && sentences(all).some((s) => re.test(s) && (/OTT|다시보기|VOD/i.test(s) || (normT(s).includes(n) && /시청|스트리밍|공개/.test(s))))
+  }).map((a) => a.link)).size
+}
+
 const CLOCK = new RegExp(String.raw`(?:(오전|오후|낮|저녁|밤|새벽)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분|\s*반)?`)
 
 /**
@@ -218,19 +233,38 @@ export function extract(articles: Article[]): ExtractedWork[] {
     const headTitle = platformsIn(a.title).length || RELEASE.test(a.title) ? titlesIn(a.title)[0] : undefined
     const articleType = typeIn(a.title) ?? typeIn(all) ?? '드라마'
     const found = new Map<string, ExtractedWork>()
+    // "OTT로는 넷플릭스·티빙", 또는 그 작품 이름과 함께 "넷플릭스에서도 시청" 같은 문장의 OTT
+    const watchOn = (title: string) => sentences(all)
+      .filter((x) => /OTT|다시보기|VOD/i.test(x) || (normT(x).includes(normT(title)) && /시청|스트리밍|공개|에서도|동시/.test(x)))
+      .flatMap(platformsIn)
     for (const s of sentences(all)) {
-      // TV 방송 기사의 날짜는 OTT 공개일과 다를 수 있어 버린다 (JTBC 24일 방송, 디즈니+ 25일 공개)
-      if (!RELEASE.test(s) || PAST.test(s) || tvTime(s)) continue
-      const platform = platformsIn(s)[0] ?? (articlePlatforms.length === 1 ? articlePlatforms[0] : undefined)
+      if (!RELEASE.test(s) || PAST.test(s)) continue
+      // TV 방송 기사: 첫 방송 날짜만 "방송 후 공개"로 쓴다 (회차 방송 소식 "11회는 3일 방송"은 새 작품이 아니다).
+      // 시각은 방송 시각이라 버리고, 같은 작품의 OTT 공개일 기사가 있으면 그쪽이 우선한다 (병합 단계)
+      const tv = tvTime(s)
+      if (tv && !/첫\s*방송|첫방/.test(s)) continue
+      // TV 기사의 OTT는 그 문장·기사 제목·"OTT로는 넷플릭스에서 시청" 같은 문장에 나올 때만, 나온 OTT마다
+      // (배우의 예전 넷플릭스 작품 이야기로 플랫폼이 정해지지 않게)
       const title = titlesIn(s)[0] ?? headTitle
-      if (!platform || !title) continue
-      const { date = null, time } = pickWhen(s, pub) ?? {}
-      const dateText = date ? null : vague(s, pub)
+      if (!title) continue
+      const platforms = platformsIn(s).length
+        ? platformsIn(s)
+        : tv
+          ? [...new Set([...platformsIn(a.title), ...watchOn(title)])]
+          : articlePlatforms.length === 1 ? articlePlatforms : []
+      if (!platforms.length) continue
+      const { date = null, time: t } = pickWhen(s, pub) ?? {}
+      const time = tv ? undefined : t
+      const after = tv && date ? s.match(CHANNEL)?.[0] ?? 'TV' : undefined
+      const dateText = date || tv ? null : vague(s, pub)
       if (!date && !dateText) continue
-      const key = `${title}|${platform}`
-      if (found.get(key)?.date) continue // 정확한 날짜를 먼저 찾았으면 유지
-      // 구분은 그 문장 → 기사 제목 → 기사 전체 순. TMDB에서 찾으면 다시 보정된다
-      found.set(key, { article: i, title, platform, type: typeIn(s) ?? articleType, date, time, dateText })
+      for (const platform of platforms) {
+        const key = `${title}|${platform}`
+        const prev = found.get(key)
+        if (prev?.date && (!prev.after || after)) continue // 정확한 날짜를 먼저 찾았으면 유지 (OTT 공개일 > 방송 후 공개)
+        // 구분은 그 문장 → 기사 제목 → 기사 전체 순. TMDB에서 찾으면 다시 보정된다
+        found.set(key, { article: i, title, platform, type: typeIn(s) ?? articleType, date, time, ...(after && { after }), dateText })
+      }
     }
     out.push(...found.values())
   })

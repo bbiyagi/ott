@@ -8,6 +8,7 @@ export interface Work {
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. "10월 중"처럼 애매하면 null + dateText
   time?: string // 'HH:MM' 공개 시각 (기사에 적혀 있을 때만)
+  after?: string // TV 방송 채널: 그 방송 후 OTT 공개
   next?: string // 다음 회차 OTT 공개일 (OTT 오리지널만)
   nextTime?: string // 다음 회차 공개 시각
   weekly?: { days: string; time?: string; per?: number; after?: string } // 매주 월 오후 6시 공개. after = 방송 채널 (그 방송 후 공개)
@@ -24,7 +25,7 @@ export interface Work {
   tmdbUrl?: string
 }
 
-export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; time?: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
+export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; time?: string; after?: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
 
 /** 상세 창 (/api/works/:id) */
 export interface WorkDetail extends Work { sources: { title: string; link: string; date: string }[] }

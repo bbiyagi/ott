@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, clock, weeklyLabel, airLabel } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, openAt, weeklyLabel, airLabel } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vReveal } from '../../lib/reveal'
@@ -65,7 +65,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <div v-if="hot.length" class="hot">
           <article class="hero lead">
             <Transition name="xfade">
-              <div :key="hot[0].id" class="hero-img" :style="bg(hot[0].backdrop ?? hot[0].poster)"></div>
+              <div :key="hot[0].id" class="hero-img" :style="bg(hot[0].backdrop ?? hot[0].poster, hot[0].title)"></div>
             </Transition>
             <button type="button" class="hit" :aria-label="`${hot[0].title} 자세히 보기`" @click="openDetail(hot[0])"></button>
             <span v-if="!hot[0].backdrop && !hot[0].poster" class="ph-label">still · 16:10</span>
@@ -84,7 +84,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
           <ul class="hot-list">
             <li v-for="(h, i) in hot.slice(1, 4)" :key="h.id" class="card hot-item rise" :style="{ '--i': i + 1 }">
               <button type="button" class="hit" :aria-label="`${h.title} 자세히 보기`" @click="openDetail(h)"></button>
-              <span class="ph" v-bg="h.poster"></span>
+              <span class="ph" v-bg="h"></span>
               <div class="hot-body col4">
                 <span class="tag">{{ hotTag(h, hotMode) }}</span>
                 <span class="hot-title">{{ h.title }}</span>
@@ -101,7 +101,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         <!-- 5~10위: 포스터 줄 -->
         <div v-if="hot.length > 4" class="hot-more">
           <button v-for="(h, i) in hot.slice(4)" :key="h.id" type="button" class="tile rise" :style="{ '--i': i + 4 }" @click="openDetail(h)">
-            <div class="ph poster" v-bg="h.poster">
+            <div class="ph poster" v-bg="h">
               <span v-if="!h.poster" class="ph-label">poster</span>
               <span class="badge" :class="{ soon: hotMode === 'soon' }">{{ hotTag(h, hotMode) }}</span>
             </div>
@@ -151,7 +151,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <button v-for="(e, j) in on(d)" :key="j" type="button" class="witem" :title="e.via === 'news' ? NEWS_NOTE : undefined" @click="openDetail(e)">
               <span class="muted" :title="platformTitle(e)"><span v-if="e.via === 'news'" class="news sm">기사</span>{{ platformLabel(e) }}</span>
               <b>{{ e.title }}</b>
-              <span v-if="e.time" class="muted">{{ clock(e.time) }}</span>
+              <span v-if="e.time && !e.after" class="muted">{{ openAt(e) }}</span>
             </button>
           </div>
         </div>
@@ -181,7 +181,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <ul class="ups">
               <li v-for="(u, i) in upcoming" :key="u.id" class="card up rise" :style="{ '--i': i }">
                 <button type="button" class="hit" :aria-label="`${u.title} 자세히 보기`" @click="openDetail(u)"></button>
-                <div class="ph" v-bg="u.poster"></div>
+                <div class="ph" v-bg="u"></div>
                 <div class="up-body">
                   <span class="row-chip">
                     <span class="up-title">{{ u.title }}</span>
@@ -207,7 +207,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             </div>
             <div class="avail">
               <button v-for="(v, i) in available" :key="v.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(v)">
-                <div class="ph poster" v-bg="v.poster"><span v-if="!v.poster" class="ph-label">poster</span></div>
+                <div class="ph poster" v-bg="v"></div>
                 <span class="t14 b6">{{ v.title }}</span>
                 <span class="meta small" :title="platformTitle(v)">{{ platformLabel(v) }} · {{ v.type }}</span>
                 <span v-if="v.next || v.date || v.weekly" class="meta small">{{ [airLabel(v), weeklyLabel(v)].filter(Boolean).join(' · ') }}</span>
@@ -226,7 +226,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
         </div>
         <div class="movies">
           <button v-for="(mv, i) in movies" :key="mv.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(mv)">
-            <div class="ph poster" v-bg="mv.poster">
+            <div class="ph poster" v-bg="mv">
               <span v-if="!mv.poster" class="ph-label">poster</span>
               <span class="badge" :class="{ soon: theaterTab === 'soon' }">{{ theaterTab === 'now' ? '상영중' : dday(mv) }}</span>
             </div>
