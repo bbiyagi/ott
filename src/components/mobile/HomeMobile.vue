@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, isStale, platformLabel, platformTitle, refreshMsg, refreshing, useHot, useOtt, when, clock, weeklyLabel } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, isStale, platformLabel, platformTitle, refreshMsg, refreshing, useHot, useOtt, when, clock, weeklyLabel, airLabel } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vBg } from '../../lib/lazy'
@@ -216,7 +216,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div class="ph poster" v-bg="v.poster"><span v-if="!v.poster" class="ph-label">poster</span></div>
               <span class="t13">{{ v.title }}</span>
               <span class="meta tiny" :title="platformTitle(v)">{{ platformLabel(v) }}</span>
-              <span v-if="v.weekly" class="meta tiny">{{ weeklyLabel(v) }}</span>
+              <span v-if="v.next || v.date || v.weekly" class="meta tiny">{{ [airLabel(v), weeklyLabel(v)].filter(Boolean).join(' · ') }}</span>
             </button>
           </div>
           <p v-if="!available.length" class="empty">조건에 맞는 작품이 없어요.</p>

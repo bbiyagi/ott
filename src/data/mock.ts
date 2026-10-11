@@ -8,6 +8,8 @@ export interface Work {
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. "10월 중"처럼 애매하면 null + dateText
   time?: string // 'HH:MM' 공개 시각 (기사에 적혀 있을 때만)
+  next?: string // 다음 회차 OTT 공개일 (OTT 오리지널만)
+  nextTime?: string // 다음 회차 공개 시각
   weekly?: { days: string; time?: string; per?: number; after?: string } // 매주 월 오후 6시 공개. after = 방송 채널 (그 방송 후 공개)
   dateText?: string
   rank?: string // 지금 인기: "넷플릭스 예능 인기 1위"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { closeDetail, detail, watchLinks } from '../../lib/detail'
-import { NEWS_NOTE, bg, dday, platformLabel, weeklyLabel, when } from '../../lib/home'
+import { NEWS_NOTE, bg, dday, platformLabel, weeklyLabel, when, airLabel } from '../../lib/home'
 import { TODAY, iso, md } from '../../lib/date'
 import NewsBadge from './NewsBadge.vue'
 
@@ -22,7 +22,8 @@ const tag = computed(() => {
 })
 const meta = computed(() => {
   const d = detail.value!
-  const date = d.platform === '극장' ? (d.date ? `${md(d.date)} 개봉` : '') : d.date || d.dateText ? when(d) : ''
+  // 서비스 중인 작품(인기·지금 볼 수 있어요)은 다음 회차·최근 공개일, 공개 예정은 공개일
+  const date = d.platform === '극장' ? (d.date ? `${md(d.date)} 개봉` : '') : d.rank || d.next || d.id.startsWith('tmdb-') ? airLabel(d) : d.date || d.dateText ? when(d) : ''
   return [platformLabel(d), d.genre ?? d.type, date, weeklyLabel(d)].filter(Boolean).join(' · ')
 })
 const shortDate = (s: string) => md(s.slice(0, 10))

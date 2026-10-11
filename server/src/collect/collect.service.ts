@@ -3,22 +3,20 @@ import { Injectable, Logger } from '@nestjs/common'
 import type { Store, StoredWork, Weekly, Work } from '../api/dto.js'
 import { addDays, has, today } from '../config.js'
 import { StoreService } from '../store/store.service.js'
-import { ExtractService, weekly, weeklyFor, type ExtractedWeekly } from '../sources/extract.service.js'
+import { ExtractService, timeFor, weekly, weeklyFor, type ExtractedWeekly } from '../sources/extract.service.js'
 import { KobisService } from '../sources/kobis.service.js'
 import { NaverNewsService } from '../sources/naver-news.service.js'
 import { TmdbService, type Media } from '../sources/tmdb.service.js'
 
-// 플랫폼 × 구분별로 검색해야 영화·애니 기사도 잡힌다 (4 × 5 + 1 = 21회, 네이버 하루 한도 25,000회)
-// 2026-10 측정: '드라마 공개'·'첫 공개'는 다른 검색어가 이미 찾은 작품만, '예능 공개'는 1개, '첫 방송'은 대부분 TV 방송 기사라 뺐다
+// 플랫폼 × 구분별로 검색해야 예능·영화·애니 기사도 잡힌다 (4 × 9 + 1 = 37회, 네이버 하루 한도 25,000회)
+// 검색 수보다 정확도가 중요하다: 겹치는 검색어도 기사를 더 모아 날짜·시각을 맞춰 보는 데 쓴다
 const QUERY_NAMES = ['넷플릭스', '티빙', '디즈니플러스', '쿠팡플레이']
-const SUFFIXES = ['공개 예정', '공개일', '오리지널 공개', '영화 공개', '애니 공개']
+const SUFFIXES = ['공개 예정', '공개일', '오리지널 공개', '드라마 공개', '예능 공개', '영화 공개', '애니 공개', '첫 공개', '첫 방송']
 const KEYWORDS = [...QUERY_NAMES.flatMap((p) => SUFFIXES.map((s) => `${p} ${s}`)), 'OTT 신작 공개']
 const PER_RUN = 3000 // 한 번에 처리할 새 기사 수 (규칙 추출이라 비용 없음)
 const SEEN_MAX = 20000 // 링크 대신 짧은 해시로 저장
 const ENRICH_MAX = 150 // 한 번에 TMDB에서 찾아볼 작품 수
-const WEEKLY_MAX = 20 // 한 번에 정기 공개 일정을 찾아볼 작품 수 (뉴스 1회 + 블로그 1회)
-const WEEKLY_RETRY = 3 // 찾아봤는데 일정이 없던 작품은 며칠 뒤에 다시 (같은 검색 반복 방지)
-const RULES = 2 // 추출 규칙이 바뀌면 올린다. 다음 수집 때 기사를 새 규칙으로 다시 읽는다 (2: TV 방송 날짜를 OTT 공개일로 쓰지 않음, 매주 일정은 방송 기준이면 "방송 후 공개")
+const RULES = 3 // 추출 규칙이 바뀌면 올린다. 다음 수집 때 기사를 새 규칙으로 다시 읽는다 (3: TV 방송 날짜·시각을 OTT 공개로 쓰지 않음, 글에 TV 채널이 있으면 "첫 방송"도 TV)
 const REFRESH_GAP = 10 * 60_000 // 새로고침 버튼 최소 간격
 
 export interface Report { articles: number; newArticles: number; extracted: number; tmdbSeries: number; newWorks: number; updated: number; released: number; skipped: string[] }
@@ -35,6 +33,11 @@ function addWeekly(s: Store, found: ExtractedWeekly[]) {
     const k = workKey(title, '').slice(0, -1), old = s.weekly[k]
     if (!old || score(x) > score(old) || (score(x) === score(old) && x.from >= old.from)) s.weekly[k] = x
   }
+}
+/** 매주 일정이 그 날짜 요일을 포함하고 OTT 직접 공개 시각이 있으면 그 시각 ("방송 후 공개"의 시각은 방송 시각이라 쓰지 않는다) */
+function weeklyTime(wk: Weekly | undefined, date: string) {
+  const day = '일월화수목금토'[new Date(`${date}T00:00:00Z`).getUTCDay()]
+  return wk?.time && !wk.after && wk.days.split('·').includes(day) ? wk.time : undefined
 }
 const hash = (s: string, n: number) => createHash('sha1').update(s).digest('hex').slice(0, n)
 const media = (w: StoredWork): Media => w.tmdbMedia ?? (w.type === '영화' ? 'movie' : 'tv')
@@ -72,7 +75,7 @@ export class CollectService {
     const t = today()
     if (s.rules !== RULES) {
       // 기사로 정한 날짜·일정을 지우고 최근 45일 기사를 새 규칙으로 다시 읽는다. TMDB 날짜 작품은 그대로
-      Object.assign(s, { seen: [], works: s.works.filter((w) => w.dateBy === 'tmdb'), weekly: {}, weeklyTried: {}, rules: RULES })
+      Object.assign(s, { seen: [], works: s.works.filter((w) => w.dateBy === 'tmdb'), weekly: {}, rules: RULES })
     }
     const report: Report = { articles: 0, newArticles: 0, extracted: 0, tmdbSeries: 0, newWorks: 0, updated: 0, released: 0, skipped: [] }
     // 단계마다 따로 실패한다. 실패한 단계는 이전 데이터를 그대로 둔다
@@ -91,7 +94,7 @@ export class CollectService {
       if (w.status === 'upcoming' && w.date && w.date <= addDays(t, -7)) { w.status = 'released'; report.released++ }
     }
     await step('OTT 서비스 중', has('tmdb'), async () => { s.ottAvailable = await this.tmdb.available(t) })
-    await step('정기 공개 일정', has('naver'), () => this.schedules(s, t))
+    await step('공개 시각·매주 일정', has('naver'), () => this.schedules(s, t))
     await step('극장', has('kobis') || has('tmdb'), async () => { s.theater = await this.theater(t) })
 
     s.lastReport = { articles: report.articles, newWorks: report.newWorks, skipped: report.skipped }
@@ -129,18 +132,33 @@ export class CollectService {
     s.seen = [...fresh.map((a) => hash(a.link, 10)), ...s.seen].slice(0, SEEN_MAX)
   }
 
-  /** 목록의 시리즈 중 정기 공개 일정이 없는 작품을 "작품명 매주"로 찾는다 */
+  /**
+   * 목록의 모든 작품(공개 예정·오늘 공개·지금 볼 수 있어요)을 작품명으로 뉴스·블로그에서 다시 찾아
+   * 공개 시각, 다음 회차 시각, 매주 공개 일정을 채운다 (작품마다 4회: 뉴스·블로그 × "공개"·"매주")
+   */
   private async schedules(s: Store, t: string) {
     const key = (title: string) => workKey(title, '').slice(0, -1)
-    const known = (title: string) => Object.keys(s.weekly ?? {}).some((k) => key(title).startsWith(k))
-    const tried = (s.weeklyTried = Object.fromEntries(Object.entries(s.weeklyTried ?? {}).filter(([, d]) => d >= addDays(t, -30))))
-    const titles = [...new Set([...s.works.filter((w) => w.status === 'upcoming'), ...s.ottAvailable]
-      .filter((w) => w.type !== '영화' && !known(w.title) && !(tried[key(w.title)] > addDays(t, -WEEKLY_RETRY))).map((w) => w.title))].slice(0, WEEKLY_MAX)
-    for (const title of titles) {
-      // 블로그에는 "방송: MBC 매주 일요일 밤 9시 10분 · OTT: 넷플릭스"처럼 편성 정리 글이 많다
-      const found = [...(await this.naver.search(`${title} 매주`)), ...(await this.naver.search(`${title} 매주 공개`, 'blog'))]
-      addWeekly(s, weeklyFor(title, found, t))
-      tried[key(title)] = t
+    const jobs = new Map<string, { title: string; works: Work[] }>()
+    for (const w of [...s.works.filter((w) => w.status === 'upcoming' || w.date === t), ...s.ottAvailable]) {
+      const k = key(w.title)
+      if (!jobs.has(k)) jobs.set(k, { title: w.title, works: [] })
+      jobs.get(k)!.works.push(w)
+    }
+    for (const { title, works } of jobs.values()) {
+      const series = works.some((w) => w.type !== '영화')
+      const found = [
+        ...(await this.naver.search(`${title} 공개`)),
+        ...(await this.naver.search(`${title} 공개 시간`, 'blog')),
+        // 블로그에는 "방송: MBC 매주 일요일 밤 9시 10분 · OTT: 넷플릭스"처럼 편성 정리 글이 많다
+        ...(series ? [...(await this.naver.search(`${title} 매주`)), ...(await this.naver.search(`${title} 매주 공개`, 'blog'))] : []),
+      ]
+      if (series) addWeekly(s, weeklyFor(title, found, t))
+      const wk = s.weekly?.[key(title)]
+      for (const w of works) {
+        // 최근(2주 안)·앞으로의 공개일만. 기사로 이미 정한 시각은 그대로
+        if (w.date && w.date >= addDays(t, -14) && !w.time) w.time = timeFor(title, w.date, found)
+        if (w.next) w.nextTime = timeFor(title, w.next, found) ?? weeklyTime(wk, w.next)
+      }
     }
   }
 

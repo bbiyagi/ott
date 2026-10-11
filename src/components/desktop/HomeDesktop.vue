@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, clock, weeklyLabel } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, clock, weeklyLabel, airLabel } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vReveal } from '../../lib/reveal'
@@ -210,7 +210,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                 <div class="ph poster" v-bg="v.poster"><span v-if="!v.poster" class="ph-label">poster</span></div>
                 <span class="t14 b6">{{ v.title }}</span>
                 <span class="meta small" :title="platformTitle(v)">{{ platformLabel(v) }} · {{ v.type }}</span>
-                <span v-if="v.weekly" class="meta small">{{ weeklyLabel(v) }}</span>
+                <span v-if="v.next || v.date || v.weekly" class="meta small">{{ [airLabel(v), weeklyLabel(v)].filter(Boolean).join(' · ') }}</span>
                 <p v-if="v.overview" class="blurb small">{{ v.overview }}</p>
               </button>
             </div>

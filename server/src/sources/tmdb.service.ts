@@ -54,15 +54,25 @@ export class TmdbService {
     })())
   }
 
-  private longRuns = new Map<number, Promise<boolean>>()
-  /** 시리즈가 장수 프로그램인지: 시즌당 평균 회차 > 20 */
-  longRun(tvId: number) {
-    let p = this.longRuns.get(tvId)
-    if (!p) {
-      p = this.get(`/tv/${tvId}`).then((d) => (d.number_of_episodes ?? 0) / Math.max(1, d.number_of_seasons ?? 1) > LONG_RUN_EPISODES)
-      this.longRuns.set(tvId, p)
-    }
+  private tvs = new Map<number, Promise<any>>()
+  private tv(tvId: number) {
+    let p = this.tvs.get(tvId)
+    if (!p) this.tvs.set(tvId, (p = this.get(`/tv/${tvId}`)))
     return p
+  }
+  /** 시리즈가 장수 프로그램인지: 시즌당 평균 회차 > 20 */
+  async longRun(tvId: number) {
+    const d = await this.tv(tvId)
+    return (d.number_of_episodes ?? 0) / Math.max(1, d.number_of_seasons ?? 1) > LONG_RUN_EPISODES
+  }
+  /**
+   * 최근·다음 회차 날짜. OTT 오리지널(네트워크가 그 OTT)일 때만: TV 방송 작품의 날짜는 방송일이라 OTT 공개일과 다를 수 있다
+   * date = 가장 최근 공개 회차 날짜, next = 다음 회차 날짜
+   */
+  async episodes(tvId: number, platform: string): Promise<{ date?: string; next?: string }> {
+    const d = await this.tv(tvId)
+    if (!(d.networks as { id: number }[] | undefined)?.some((n) => n.id === NETWORKS[platform])) return {}
+    return { date: d.last_episode_to_air?.air_date || undefined, next: d.next_episode_to_air?.air_date || undefined }
   }
 
   private genreMap() {
@@ -152,10 +162,11 @@ export class TmdbService {
         let n = 0
         for (const x of (r.results as any[]).slice(0, 5)) {
           const longRun = media === 'tv' ? await this.longRun(x.id) : false
+          const eps = media === 'tv' ? await this.episodes(x.id, platform) : {}
           // 같은 작품이 여러 플랫폼에 있으면 플랫폼마다 따로 둔다 (id 끝 = 플랫폼 번호)
           const id = `tmdb-${media}-${x.id}-${PLATFORMS.indexOf(platform as (typeof PLATFORMS)[number])}`
           out.push({
-            id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: null, ...pics(x),
+            id, title: x.name ?? x.title, platform, type: typeOf(media, x.genre_ids), date: eps.date ?? null, ...(eps.next && { next: eps.next }), ...pics(x),
             rank: longRun ? undefined : `${platform} ${label} 인기 ${++n}위`, pop: x.popularity, ko: x.original_language === 'ko',
             overview: x.overview || undefined, tmdbUrl: `https://www.themoviedb.org/${media}/${x.id}`, longRun,
           })

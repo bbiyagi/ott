@@ -53,11 +53,13 @@ function typeIn(text: string) {
 
 // "오후 5시", "밤 10시 50분", "17시". 접두어 없는 12시 이하는 오전·오후를 알 수 없어 버린다
 const TIME = String.raw`\)?\s*(?:\([^)]*\)\s*)?(?:[월화수목금토일]요일\s*)?(?:(오전|오후|낮|저녁|밤|새벽)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분|\s*반)?`
-// OTT 공개 일정만 쓴다. TV 방송 기준 문장(채널 이름, "방송되며 넷플릭스에서도 공개", 플랫폼 없이 "방송")의 날짜는 버리고,
+// OTT 공개 일정만 쓴다. TV 방송 기준 문장("방송"·"전파", TV 채널 이름)의 날짜·시각은 버리고,
 // 매주 일정은 "MBC 오후 9시 10분 방송 후 공개"로 방송 기준임을 밝혀 쓴다.
-// "티빙 예능 'X'는 11일 첫 방송된다"처럼 OTT만 나오는 "방송"은 OTT 공개
+// "방송"은 OTT 오리지널도 가끔 쓰지만, 기사 요약은 검색어마다 잘려 채널 이름이 빠지기도 해서 모두 TV로 본다 (정확도 우선)
 const CHANNEL = /tvN|JTBC|SBS|KBS|MBC|ENA|MBN|Mnet|EBS|E채널|채널A|TV조선|라이프타임/i
-const tvTime = (s: string) => CHANNEL.test(s) || (/방송|전파/.test(s) && (/공개|OTT|시청|다시보기|VOD|에서도/i.test(s) || !platformsIn(s).length))
+const tvTime = (s: string) => CHANNEL.test(s) || /방송|전파/.test(s)
+// 순위·시청률 기사 문장 ("넷플릭스 톱10은 매주 수요일 순위를 공개")은 작품 일정이 아니다
+const RANKING = /톱\s*10|TOP\s*10|순위|집계|시청률|화제성/i
 const PM = new Set(['오후', '저녁', '밤'])
 export function toTime(ampm: string | undefined, h: number, min = 0): string | undefined {
   if (h > 23 || min > 59) return
@@ -115,7 +117,7 @@ const WEEKLY = new RegExp(String.raw`매주\s*((?:${DAY}(?:\s*(?:[,·ㆍ∙~]|�
 /** 문장 하나의 "매주 …" OTT 공개 일정. TV 방송 기준 문장이면 "방송 후 공개"로 (방송 시각을 OTT 공개 시각으로 쓰지 않는다) */
 export function weeklyIn(s: string): Weekly | null {
   const m = s.match(WEEKLY)
-  if (!m) return null
+  if (!m || RANKING.test(s)) return null
   const tv = tvTime(s)
   if (!tv && !/공개|스트리밍|방송/.test(s)) return null // "매주 시청자를 만난다"처럼 어디서인지 모르는 문장
   const days = m[1].replace(/요일/g, '').replace(/\s*(?:[,·ㆍ∙]|과|와|및)\s*|\s+/g, '·').replace(/\s*~\s*/g, '~').replace(/^·+|·+$/g, '')
@@ -125,8 +127,10 @@ export function weeklyIn(s: string): Weekly | null {
 }
 
 /** "매주"에 가장 가까운 작품명: 앞쪽("'X'는 매주") 우선, 없으면 뒤쪽("매주 … 공개되는 'X'") */
-export function weeklyTitle(s: string): string | undefined {
-  const at = s.indexOf('매주')
+export const weeklyTitle = (s: string) => nearestTitle(s, s.indexOf('매주'))
+
+/** 문장 속 위치(at)에 가장 가까운 작품명 */
+function nearestTitle(s: string, at: number): string | undefined {
   // 가장 가까운 따옴표가 작품명이 아니면(대사·"영화가 좋다" 같은 프로그램) 더 먼 작품으로 넘어가지 않는다
   const near = [...s.matchAll(QUOTE)].map((m) => ({ i: m.index!, t: m[1].replace(/\s*\([^)]*\)\s*$/, '').trim() }))
   // 뒤쪽 작품은 가까이(40자 안) 있고 사이에 괄호가 닫히지 않을 때만 ("(… 매주 수요일 방송) 〈다른 작품〉" 방지)
@@ -141,28 +145,62 @@ const normT = (t: string) => t.replace(/시즌|season/gi, '').replace(/[\s\p{P}\
 // 같은 작품: 이름이 같거나 더 긴 이름("닥터X" → "닥터X: 하얀 마피아의 시대"). "신인감독 김연경"(시즌1)은 "신인감독 김연경2"가 아니다
 const sameWork = (q: string, n: string) => q.startsWith(n) || (n.startsWith(q) && !/^\d/.test(n.slice(q.length)))
 
-/** 작품명으로 찾은 뉴스·블로그(최근 60일)에서 그 작품의 정기 공개 일정. 블로그는 작품명을 따옴표로 쓰지 않아 글 제목·문장에 이름이 있으면 그 작품으로 본다 */
+/**
+ * 이 문장이 그 작품 이야기인지. 따옴표 작품명이 있으면 at(일정 위치)에 가장 가까운 것이 이 작품일 때만 (다른 작품 일정 방지).
+ * 블로그는 작품명을 따옴표로 쓰지 않아 그 문장에 이름이 있으면 그 작품으로 본다 (글 제목만으로는 아님). "루키"처럼 짧은 이름은 따옴표 없이 맞추지 않는다
+ */
+function about(title: string, s: string, at: number) {
+  const n = normT(title)
+  if ([...s.matchAll(QUOTE)].length) { const q = nearestTitle(s, at); return !!q && sameWork(normT(q), n) }
+  return n.length >= 4 && normT(s).includes(n)
+}
+
+/** 작품명으로 찾은 뉴스·블로그(최근 60일)에서 그 작품의 정기 공개 일정 */
 export function weeklyFor(title: string, articles: Article[], today = kstDate(new Date().toISOString())): ExtractedWeekly[] {
   const n = normT(title), out: ExtractedWeekly[] = []
   for (const a of articles) {
     if (kstDate(a.pubDate) < addDays(today, -60)) continue // 지난 시즌·바뀐 편성
-    const inHead = normT(a.title).includes(n)
-    for (const s of sentences(`${a.title}. ${a.description}`)) {
+    const all = `${a.title}. ${a.description}`
+    for (const s of sentences(all)) {
       const w = weeklyIn(s)
       if (!w) continue
-      // 따옴표 작품명이 있으면 그것이 이 작품일 때만 (다른 작품 일정 방지)
-      const quoted = [...s.matchAll(QUOTE)].length > 0, q = weeklyTitle(s)
-      const ok = quoted ? !!q && sameWork(normT(q), n) : n.length >= 4 && (normT(s).includes(n) || inHead) // "루키"처럼 짧은 이름은 따옴표 없이 맞추지 않는다
-      if (ok) out.push({ ...w, title, from: kstDate(a.pubDate) })
+      if (about(title, s, s.indexOf('매주'))) out.push({ ...w, title, from: kstDate(a.pubDate) })
     }
   }
   return out
 }
 
+const CLOCK = new RegExp(String.raw`(?:(오전|오후|낮|저녁|밤|새벽)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분|\s*반)?`)
+
+/**
+ * 작품명으로 찾은 뉴스·블로그에서 그 날짜의 OTT 공개 시각 ('HH:MM').
+ * "9일 오후 5시 공개", 그날 쓴 글의 "오늘 오후 5시 공개". TV 방송 문장은 쓰지 않는다. 여러 글이 다르면 가장 많이 나온 시각
+ */
+export function timeFor(title: string, date: string, articles: Article[]): string | undefined {
+  const n = normT(title), count = new Map<string, number>()
+  for (const a of articles) {
+    const pub = kstDate(a.pubDate)
+    if (pub > date || pub < addDays(date, -60)) continue // 공개일 이후 글은 "지난 9일 오후 5시 공개"처럼 다른 회차일 수 있다
+    const all = `${a.title}. ${a.description}`
+    for (const s of sentences(all)) {
+      if (tvTime(s) || RANKING.test(s) || !/공개|스트리밍|오픈|업로드/.test(s)) continue
+      const w = pickWhen(s, pub)
+      let time = w?.date === date ? w.time : undefined
+      if (!w && pub === date && /오늘|이날/.test(s)) {
+        const m = s.match(CLOCK)
+        if (m) time = toTime(m[1], Number(m[2]), m[3] ? Number(m[3]) : m[0].endsWith('반') ? 30 : 0)
+      }
+      if (time && about(title, s, s.search(/\d{1,2}시/))) count.set(time, (count.get(time) ?? 0) + 1)
+    }
+  }
+  return [...count].sort((x, y) => y[1] - x[1])[0]?.[0]
+}
+
 export function weekly(articles: Article[]): ExtractedWeekly[] {
   const out: ExtractedWeekly[] = []
   for (const a of articles) {
-    for (const s of sentences(`${a.title}. ${a.description}`)) {
+    const all = `${a.title}. ${a.description}`
+    for (const s of sentences(all)) {
       const w = weeklyIn(s), title = w && weeklyTitle(s)
       if (w && title) out.push({ ...w, title, from: kstDate(a.pubDate) })
     }

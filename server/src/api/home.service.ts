@@ -74,7 +74,7 @@ export class HomeService {
     const t = today()
 
     const out = (w: Work | StoredWork): Work => ({
-      id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, weekly: weeklyOf(s, w), dateText: w.dateText,
+      id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, next: w.next, nextTime: w.nextTime, weekly: weeklyOf(s, w), dateText: w.dateText,
       genre: w.genre, poster: w.poster, backdrop: w.backdrop, rank: w.rank, longRun: w.longRun,
       overview: w.overview, // 카드에 두 줄 소개로 보인다
       ...('sources' in w
@@ -91,12 +91,15 @@ export class HomeService {
     const ours = (w: { platform: string }) => (PLATFORMS as readonly string[]).includes(w.platform)
     const works = s.works.filter((w) => ours(w) && (w.tmdbId || w.sources.length >= 2))
     const available = s.ottAvailable.filter(ours)
-    const upcoming = group(works.filter((w) => w.status === 'upcoming' && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out))
+    // 오늘 공개작은 공개 확인 단계에서 released가 돼도 오늘 하루는 공개 예정·기대작에 남긴다
+    const upcoming = group(works.filter((w) => (w.status === 'upcoming' || w.date === t) && (w.date ? w.date >= t : !vaguePast(w.dateText, t))).map(out))
     // 메인 목록은 화면에서 플랫폼별로 걸러 10개를 보여 주므로 넉넉히(최대 40개) 순서만 정해 보낸다
     // 기대작(OTT만): 60일 안에 공개되는 드라마·시즌제 예능 중 기사가 많이 나온 순
-    const soon = upcoming
+    // 오늘 공개작(서비스 중인 OTT 오리지널의 새 회차·시즌 포함)은 기사 수와 상관없이 맨 앞
+    const today_ = available.filter((w) => main(w) && w.date === t).map(out)
+    const soon = group([...upcoming, ...today_])
       .filter((w) => main(w) && w.date && w.date >= t && w.date <= addDays(t, 60))
-      .sort((a, b) => (b.buzz ?? 0) - (a.buzz ?? 0) || a.date!.localeCompare(b.date!))
+      .sort((a, b) => Number(b.date === t) - Number(a.date === t) || (b.buzz ?? 0) - (a.buzz ?? 0) || a.date!.localeCompare(b.date!))
       .slice(0, 40)
     const tn = s.theater.now.map(out)
     const oa = group(available.map(out))

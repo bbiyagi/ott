@@ -1,7 +1,7 @@
 // 규칙 추출 확인 (실제 기사 제목·요약에서 가져온 예): npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { extract, pickDate, pickWhen, vague, weeklyFor, weeklyIn, weeklyTitle } from './extract.service.js'
+import { extract, pickDate, pickWhen, timeFor, vague, weeklyFor, weeklyIn, weeklyTitle } from './extract.service.js'
 
 const art = (pub: string, title: string, description: string) => ({ title, description, link: title, pubDate: `${pub}T03:00:00Z` })
 const one = (pub: string, title: string, description: string) =>
@@ -39,10 +39,10 @@ test('이미 공개된 작품, 관계없는 기사는 뺀다', () => {
 })
 
 test('작품명 뒤 괄호는 뗀다', () => {
-  assert.equal(one('2026-10-09', '[이번주 뭐보지] 예능 공개', "티빙 예능 '필승 원더독스'(이하 원더독스)는 오는 11일 첫 방송된다.")[0]?.title, '필승 원더독스')
-  assert.equal(one('2026-10-09', '예능 공개', "티빙 예능 '필승 원더독스(이하 원더독스)'는 오는 11일 첫 방송된다.")[0]?.title, '필승 원더독스')
+  assert.equal(one('2026-10-09', '[이번주 뭐보지] 예능 공개', "티빙 예능 '필승 원더독스'(이하 원더독스)는 오는 11일 공개된다.")[0]?.title, '필승 원더독스')
+  assert.equal(one('2026-10-09', '예능 공개', "티빙 예능 '필승 원더독스(이하 원더독스)'는 오는 11일 공개된다.")[0]?.title, '필승 원더독스')
   // 웨이브는 다루지 않는다
-  assert.deepEqual(one('2026-10-09', '예능 공개', "웨이브 예능 '필승 원더독스'는 오는 11일 첫 방송된다."), [])
+  assert.deepEqual(one('2026-10-09', '예능 공개', "웨이브 예능 '필승 원더독스'는 오는 11일 공개된다."), [])
 })
 
 test('날짜 해석', () => {
@@ -91,6 +91,8 @@ test('매주 공개 일정 (OTT 공개만)', () => {
 test('TV 방송 날짜는 공개일로 쓰지 않는다', () => {
   const a = (d: string) => extract([{ title: "디즈니+ '파이널 테이블'", description: d, link: 'z', pubDate: '2026-10-05T09:00:00+09:00' }])
   assert.deepEqual(a("'파이널 테이블'은 오는 24일 오후 10시 40분 JTBC에서 첫 방송된다."), [])
+  // 기사 요약에서 채널 이름이 빠져도 "첫 방송"은 TV 방송
+  assert.deepEqual(a("디즈니+ '파이널 테이블'은 오는 24일 오후 10시 40분에 첫 방송된다."), [])
   assert.equal(a("디즈니+ '파이널 테이블'은 25일 오후 4시 공개된다.")[0]?.date, '2026-10-25')
 })
 
@@ -104,7 +106,22 @@ test('블로그에서 작품별 일정', () => {
   // 지난 시즌 기사, 오래된 글은 쓰지 않는다
   assert.deepEqual(weeklyFor('신인감독 김연경2', b('x', "'신인감독 김연경'은 매주 토요일 오후 8시 30분 MBC에서 방송된다."), '2026-10-11'), [])
   assert.deepEqual(weeklyFor('신인감독 김연경2', b('신인감독 김연경2', '매주 일요일 오후 9시 10분 MBC 방송'), '2027-01-01'), [])
+  // 순위 기사의 "매주 수요일 순위 공개"는 작품 일정이 아니다
+  assert.deepEqual(weeklyFor('포핸즈', b('x', "'포핸즈' 넷플릭스 톱10 3위. 넷플릭스 톱10 사이트는 매주 수요일 새벽 순위를 공개한다."), '2026-10-11'), [])
   assert.deepEqual(weeklyFor('루키', b('루키 출연진', '루키는 매주 수요일 오후 8시 45분 tvN 방송'), '2026-10-11'), [])
   // 다른 작품 이야기는 붙이지 않는다
   assert.deepEqual(weeklyFor('신인감독 김연경2', b('주말 예능 정리', "KBS2 '영화가 좋다'는 매주 토요일 오전 10시 10분 방송된다"), '2026-10-11'), [])
+})
+
+test('작품별 공개 시각 (뉴스·블로그)', () => {
+  const b = (title: string, description: string, pub = '2026-10-08') => ({ title, description, link: title, pubDate: `${pub}T10:00:00+09:00` })
+  assert.equal(timeFor('나를 충전해줘', '2026-10-09', [b('넷플릭스 신작', "'나를 충전해줘'의 공개일은 9일 금요일 오후 5시다.")]), '17:00')
+  // 블로그: 따옴표 없이, 그날 쓴 "오늘 오후 4시 공개"
+  assert.equal(timeFor('파이널 테이블', '2026-10-25', [b('파이널 테이블 공개 시간 정리', '디즈니플러스 파이널 테이블 오늘 오후 4시 공개 예정', '2026-10-25')]), '16:00')
+  // TV 방송 시각, 다른 작품, 다른 날짜는 쓰지 않는다
+  assert.equal(timeFor('파이널 테이블', '2026-10-25', [b('x', "'파이널 테이블'은 25일 오후 10시 40분 JTBC에서 공개된다.")]), undefined)
+  assert.equal(timeFor('파이널 테이블', '2026-10-25', [b('x', "'꿀알바'는 25일 오후 5시 넷플릭스에서 공개된다.")]), undefined)
+  assert.equal(timeFor('파이널 테이블', '2026-10-25', [b('x', "'파이널 테이블'은 24일 오후 5시 공개된다.")]), undefined)
+  // 여러 글이 다르면 가장 많이 나온 시각
+  assert.equal(timeFor('꿀알바', '2026-10-30', [b('a', "'꿀알바'는 30일 오후 5시 공개된다."), b('b', "'꿀알바'는 30일 오후 5시 공개."), b('c', "'꿀알바'는 30일 오후 4시 공개.")]), '17:00')
 })

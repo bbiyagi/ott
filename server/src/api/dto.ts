@@ -9,6 +9,8 @@ export interface Work {
   type: string // 영화·드라마·예능·애니메이션
   date: string | null // YYYY-MM-DD. 애매하면 null + dateText
   time?: string // 'HH:MM' KST 공개 시각. 기사에 적혀 있을 때만
+  next?: string // 다음 회차 OTT 공개일 (TMDB, OTT 오리지널만)
+  nextTime?: string // 다음 회차 공개 시각 'HH:MM' (기사·블로그 또는 매주 일정)
   weekly?: Weekly // 시리즈 정기 공개: 매주 토·일 오후 9시 10분 (기사 기준)
   dateText?: string
   rank?: string // 지금 인기: "넷플릭스 예능 인기 1위"
@@ -56,7 +58,6 @@ export interface Store {
   ottAvailable: (Work & { pop?: number; ko?: boolean })[] // pop = TMDB 인기 점수, ko = 한국어 작품, longRun은 Work에
   theater: { now: Work[]; soon: Work[] }
   weekly?: Record<string, Weekly & { from: string }> // 작품명(공백·문장부호 제거) → 정기 공개 일정
-  weeklyTried?: Record<string, string> // 정기 일정을 찾아본 날짜 (같은 검색 반복 방지)
   rules?: number // 추출 규칙 버전 (collect.service RULES)
   collectedAt?: string
   lastReport?: { articles: number; newWorks: number; skipped: string[] } // 마지막 수집 결과 (/api/health에서 확인)
