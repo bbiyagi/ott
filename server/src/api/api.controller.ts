@@ -1,4 +1,4 @@
-import { Controller, Get, Headers, HttpCode, Param, Post, UnauthorizedException } from '@nestjs/common'
+import { Controller, Get, Header, Headers, HttpCode, Param, Post, UnauthorizedException } from '@nestjs/common'
 import { env, keyHints, missingKeys, today } from '../config.js'
 import { CollectService } from '../collect/collect.service.js'
 import { StoreService } from '../store/store.service.js'
@@ -20,6 +20,8 @@ export class ApiController {
   }
 
   /** 작품 상세 창 */
+  // 출처 기사는 하루 두 번 수집 때만 바뀐다. Vercel 엣지에 5분 저장해 다시 열 때는 바로 뜨게
+  @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
   @Get('works/:id')
   work(@Param('id') id: string) {
     return this.home.detail(id)

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, clock, weeklyLabel } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vReveal } from '../../lib/reveal'
@@ -151,6 +151,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <button v-for="(e, j) in on(d)" :key="j" type="button" class="witem" :title="e.via === 'news' ? NEWS_NOTE : undefined" @click="openDetail(e)">
               <span class="muted" :title="platformTitle(e)"><span v-if="e.via === 'news'" class="news sm">기사</span>{{ platformLabel(e) }}</span>
               <b>{{ e.title }}</b>
+              <span v-if="e.time" class="muted">{{ clock(e.time) }}</span>
             </button>
           </div>
         </div>
@@ -186,7 +187,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                     <span class="up-title">{{ u.title }}</span>
                     <NewsBadge :w="u" />
                   </span>
-                  <span class="meta" :title="platformTitle(u)">{{ platformLabel(u) }} · {{ u.type }} · {{ when(u) }}</span>
+                  <span class="meta" :title="platformTitle(u)">{{ [platformLabel(u), u.type, when(u), weeklyLabel(u)].filter(Boolean).join(' · ') }}</span>
                   <p v-if="u.overview" class="blurb">{{ u.overview }}</p>
                 </div>
                 <div class="up-side">
@@ -209,6 +210,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                 <div class="ph poster" v-bg="v.poster"><span v-if="!v.poster" class="ph-label">poster</span></div>
                 <span class="t14 b6">{{ v.title }}</span>
                 <span class="meta small" :title="platformTitle(v)">{{ platformLabel(v) }} · {{ v.type }}</span>
+                <span v-if="v.weekly" class="meta small">{{ weeklyLabel(v) }}</span>
                 <p v-if="v.overview" class="blurb small">{{ v.overview }}</p>
               </button>
             </div>

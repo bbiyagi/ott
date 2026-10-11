@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
-import type { CalEvent, HomeData, StoredWork, Work, WorkDetail } from './dto.js'
+import type { CalEvent, HomeData, Store, StoredWork, Work, WorkDetail } from './dto.js'
 import { addDays, today } from '../config.js'
 import { StoreService } from '../store/store.service.js'
 import { PLATFORMS } from '../sources/extract.service.js'
@@ -55,6 +55,14 @@ export function group<T extends Work | CalEvent>(list: T[], byDate = false): T[]
   return [...map.values()]
 }
 
+/** 기사 속 정기 공개 일정. "닥터X"처럼 기사가 줄여 쓴 제목도 앞부분(3글자 이상)이 같으면 찾는다. 단 "김연경"(시즌1) ≠ "김연경2" */
+function weeklyOf(s: Store, w: Work) {
+  if (w.type === '영화' || !s.weekly) return undefined
+  const t = norm(w.title), since = addDays(today(), -60) // 두 달 넘은 글의 편성은 바뀌었을 수 있다
+  const k = s.weekly[t] ? t : Object.keys(s.weekly).filter((k) => k.length >= 3 && t.startsWith(k) && !/^\d/.test(t.slice(k.length))).sort((a, b) => b.length - a.length)[0]
+  return k && s.weekly[k].from >= since ? s.weekly[k] : undefined
+}
+
 @Injectable()
 export class HomeService {
   constructor(private store: StoreService) {}
@@ -66,7 +74,7 @@ export class HomeService {
     const t = today()
 
     const out = (w: Work | StoredWork): Work => ({
-      id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, dateText: w.dateText,
+      id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, weekly: weeklyOf(s, w), dateText: w.dateText,
       genre: w.genre, poster: w.poster, backdrop: w.backdrop, rank: w.rank, longRun: w.longRun,
       overview: w.overview, // 카드에 두 줄 소개로 보인다
       ...('sources' in w
@@ -98,7 +106,7 @@ export class HomeService {
       .sort((a, b) => Number(!!b.ko) - Number(!!a.ko) || Number(b.type === '드라마') - Number(a.type === '드라마') || (b.pop ?? 0) - (a.pop ?? 0))
     const now = interleave(picks).slice(0, 40).map(out)
 
-    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, source: w.source, via: w.via, poster: w.poster })
+    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, time: w.time, source: w.source, via: w.via, poster: w.poster })
     const events = group([...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev), true)
 
     return {
@@ -119,7 +127,7 @@ export class HomeService {
       const mates = s.works.filter((x) => norm(x.title) === norm(w.title) && (PLATFORMS as readonly string[]).includes(x.platform))
       const news = mates.flatMap((x) => x.sources).filter((x) => x.title !== 'TMDB')
       return {
-        id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, dateText: w.dateText, poster: w.poster, backdrop: w.backdrop,
+        id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, time: w.time, weekly: weeklyOf(s, w), dateText: w.dateText, poster: w.poster, backdrop: w.backdrop,
         overview: w.overview, via: w.dateBy ?? 'news', platforms: [...new Set([w.platform, ...mates.map((x) => x.platform)])],
         tmdbUrl: w.tmdbId ? `https://www.themoviedb.org/${w.tmdbMedia ?? 'tv'}/${w.tmdbId}` : undefined,
         sources: [...new Map(news.map((x) => [x.link, x])).values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20),
@@ -128,6 +136,6 @@ export class HomeService {
     const other = [...s.ottAvailable, ...s.theater.now, ...s.theater.soon].find((x) => x.id === id)
     if (!other) throw new NotFoundException()
     const { pop: _pop, ko: _ko, ...rest } = other as typeof other & { pop?: number; ko?: boolean }
-    return { ...rest, sources: [] }
+    return { ...rest, weekly: weeklyOf(s, rest), sources: [] }
   }
 }

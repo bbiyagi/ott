@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { closeDetail, detail, watchLinks } from '../../lib/detail'
-import { NEWS_NOTE, bg, dday, platformLabel, when } from '../../lib/home'
+import { NEWS_NOTE, bg, dday, platformLabel, weeklyLabel, when } from '../../lib/home'
 import { TODAY, iso, md } from '../../lib/date'
 import NewsBadge from './NewsBadge.vue'
 
@@ -23,7 +23,7 @@ const tag = computed(() => {
 const meta = computed(() => {
   const d = detail.value!
   const date = d.platform === '극장' ? (d.date ? `${md(d.date)} 개봉` : '') : d.date || d.dateText ? when(d) : ''
-  return [platformLabel(d), d.genre ?? d.type, date].filter(Boolean).join(' · ')
+  return [platformLabel(d), d.genre ?? d.type, date, weeklyLabel(d)].filter(Boolean).join(' · ')
 })
 const shortDate = (s: string) => md(s.slice(0, 10))
 </script>
@@ -42,12 +42,19 @@ const shortDate = (s: string) => md(s.slice(0, 10))
         <h2 id="detail-title">{{ detail.title }}</h2>
         <p class="meta">{{ meta }}</p>
         <p v-if="detail.overview" class="overview">{{ detail.overview }}</p>
-        <p v-else-if="detail.loading" class="muted">불러오는 중…</p>
+        <div v-else-if="detail.loading" class="sk-lines" aria-hidden="true"><span class="sk" style="width: 100%"></span><span class="sk" style="width: 92%"></span><span class="sk" style="width: 60%"></span></div>
 
         <div class="actions">
           <a v-for="l in watchLinks(detail)" :key="l.url" :href="l.url" target="_blank" rel="noopener" class="act primary">{{ l.label }} ↗</a>        </div>
 
-        <section v-if="detail.sources.length" class="sources" aria-labelledby="detail-src">
+        <!-- 출처 기사는 서버에서 늦게 온다: 같은 모양의 자리표시 -->
+        <section v-if="detail.loading && !detail.sources.length" class="sources" role="status" aria-label="출처 기사 불러오는 중">
+          <span class="sk sk-h"></span>
+          <ul>
+            <li v-for="i in 3" :key="i"><span class="sk" :style="{ width: `${[78, 64, 70][i - 1]}%` }"></span><span class="sk sk-date"></span></li>
+          </ul>
+        </section>
+        <section v-else-if="detail.sources.length" class="sources" aria-labelledby="detail-src">
           <h3 id="detail-src">출처 기사 {{ detail.sources.length }}건</h3>
           <p class="muted small">{{ NEWS_NOTE }}</p>
           <ul>
@@ -89,6 +96,13 @@ h3 { margin: 0; font-size: 16px; font-weight: 700; }
 .sources li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
 .sources li a { font-size: 14px; text-decoration: none; line-height: 1.45; }
 .sources li span { flex: 0 0 auto; }
+/* 자리표시: 불러오는 화면(App.vue)과 같은 빛 지나가기 */
+.sk { position: relative; display: block; overflow: hidden; height: 14px; border-radius: 6px; background: var(--surf2); }
+.sk::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.05) 50%, transparent 80%); transform: translateX(-100%); animation: sweep 1.6s var(--ease) infinite; }
+@keyframes sweep { to { transform: translateX(100%); } }
+.sk-lines { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.sk-h { width: 120px; height: 18px; margin-bottom: 4px; }
+.sources li .sk-date { width: 36px; }
 @media (max-width: 767px) {
   .detail { width: 100%; max-width: 100%; max-height: 92vh; margin: auto 0 0; border-radius: 16px 16px 0 0; }
   .detail[open] { animation-name: sheet; }

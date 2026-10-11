@@ -1,7 +1,7 @@
 // 규칙 추출 확인 (실제 기사 제목·요약에서 가져온 예): npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { extract, pickDate, vague } from './extract.service.js'
+import { extract, pickDate, pickWhen, vague, weeklyFor, weeklyIn, weeklyTitle } from './extract.service.js'
 
 const art = (pub: string, title: string, description: string) => ({ title, description, link: title, pubDate: `${pub}T03:00:00Z` })
 const one = (pub: string, title: string, description: string) =>
@@ -53,4 +53,58 @@ test('날짜 해석', () => {
   assert.equal(vague('올 4분기 공개 예정인 오리지널 예능', '2026-10-09'), '4분기')
   assert.equal(vague('오는 11월 디즈니플러스 오리지널 시리즈로도 공개될 예정', '2026-10-09'), '11월 중')
   assert.equal(vague('내년 공개 예정인 디즈니+', '2026-10-09'), null)
+})
+
+test('공개 시각', () => {
+  const w = (s: string, pub = '2026-10-05') => pickWhen(s, pub)
+  assert.deepEqual(w('공개일은 9일 금요일 오후 5시다'), { date: '2026-10-09', time: '17:00' })
+  assert.deepEqual(w('오는 24일 밤 10시 50분 첫 방송'), { date: '2026-10-24', time: '22:50' })
+  assert.deepEqual(w('3일 낮 12시 티빙에서 독점 공개', '2026-10-01'), { date: '2026-10-03', time: '12:00' })
+  assert.deepEqual(w('오늘(27일) 오후 6시 공개', '2026-10-27'), { date: '2026-10-27', time: '18:00' })
+  assert.deepEqual(w('10일(토) 오후 9시 10분 첫 방송'), { date: '2026-10-10', time: '21:10' })
+  assert.deepEqual(w('11월 20일 17시 공개'), { date: '2026-11-20', time: '17:00' })
+  // 시각이 없거나 오전·오후를 알 수 없으면 날짜만
+  assert.deepEqual(w('오는 9일 공개'), { date: '2026-10-09' })
+  assert.deepEqual(w('9일 5시 공개'), { date: '2026-10-09' })
+  assert.deepEqual(w('9일 밤 12시 공개'), { date: '2026-10-09' })
+  // TV 방송 시각은 OTT 공개 시각이 아니라 버린다
+  assert.equal(extract([{ title: "넷플릭스 '100일의 거짓말'", description: "tvN '100일의 거짓말'은 10일 밤 9시 10분 첫 방송되며 넷플릭스에서도 공개된다.", link: 'y', pubDate: '2026-10-05T09:00:00+09:00' }])[0]?.time, undefined)
+  assert.equal(extract([{ title: "넷플릭스 '나를 충전해줘' 공개", description: "넷플릭스 시리즈 '나를 충전해줘'는 9일 오후 5시 공개된다.", link: 'x', pubDate: '2026-10-05T09:00:00+09:00' }])[0]?.time, '17:00')
+})
+
+test('매주 공개 일정 (OTT 공개만)', () => {
+  assert.deepEqual(weeklyIn("'원수는 외야석에서'는 매주 월요일 오후 6시 티빙에서 공개된다"), { days: '월', time: '18:00' })
+  assert.deepEqual(weeklyIn("디즈니+ '파이널 테이블'은 10월 25일부터 매주 일, 월요일 공개된다"), { days: '일·월' })
+  assert.deepEqual(weeklyIn("'술래게임'은 총 10부작으로, 매주 수요일 2회씩 디즈니+에서 공개된다"), { days: '수', per: 2 })
+  // TV 방송 시각은 OTT 공개 시각이 아니라 "방송 후 공개"로
+  assert.deepEqual(weeklyIn("'100일의 거짓말'은 매주 토요일과 일요일 오후 9시 10분 tvN에서 방송된다"), { days: '토·일', time: '21:10', after: 'tvN' })
+  assert.deepEqual(weeklyIn("'용감한 형사들5'는 매주 금요일 밤 9시 50분 방송되며 넷플릭스에서도 공개된다"), { days: '금', time: '21:50', after: 'TV' })
+  assert.equal(weeklyIn("매주 금ㆍ토요일 시청자들과 만날 예정이다"), null)
+  assert.equal(weeklyTitle("'환승연애4' 후속 '원수는 외야석에서'는 매주 월요일 오후 6시 공개"), '원수는 외야석에서')
+  assert.equal(weeklyTitle("매주 월요일 오후 6시 티빙을 통해 공개되는 '원수는 외야석에서'는"), '원수는 외야석에서')
+  assert.equal(weeklyTitle("'나를 충전해줘' 리뷰. KBS2 '영화가 좋다'는 매주 토요일 오전 10시 10분"), undefined)
+  assert.equal(weeklyTitle('(일본 Nippon TV 매주 수요일 방송) 〈푸른길〉 손석구'), undefined)
+  assert.equal(weeklyIn('매주 일정이 공개된다'), null)
+  assert.equal(weeklyIn('매주 9일 금요일 밤 9시 50분 공개'), null)
+})
+
+test('TV 방송 날짜는 공개일로 쓰지 않는다', () => {
+  const a = (d: string) => extract([{ title: "디즈니+ '파이널 테이블'", description: d, link: 'z', pubDate: '2026-10-05T09:00:00+09:00' }])
+  assert.deepEqual(a("'파이널 테이블'은 오는 24일 오후 10시 40분 JTBC에서 첫 방송된다."), [])
+  assert.equal(a("디즈니+ '파이널 테이블'은 25일 오후 4시 공개된다.")[0]?.date, '2026-10-25')
+})
+
+test('블로그에서 작품별 일정', () => {
+  const b = (title: string, description: string) => [{ title, description, link: 'b', pubDate: '2026-10-11T00:00:00+09:00' }]
+  // 블로그는 따옴표 없이 쓴다
+  assert.deepEqual(weeklyFor('신인감독 김연경2', b('신인감독 김연경2 선수 명단 총정리', 'MBC 신인감독 김연경2 공식 포스터 방송: MBC 매주 일요일 밤 9시 10분 첫 방송: 2026년 10월 11일 OTT: 넷플릭스'), '2026-10-11'),
+    [{ days: '일', time: '21:10', after: 'MBC', title: '신인감독 김연경2', from: '2026-10-11' }])
+  // "방송되며, OTT로는 티빙에서 시청"은 방송 시각
+  assert.deepEqual(weeklyFor('신인감독 김연경2', b('x', "'신인감독 김연경2'는 매주 일요일 오후 9시 10분에 방송되며, OTT로는 티빙, 웨이브에서 시청할 수 있다."), '2026-10-11')[0]?.after, 'TV')
+  // 지난 시즌 기사, 오래된 글은 쓰지 않는다
+  assert.deepEqual(weeklyFor('신인감독 김연경2', b('x', "'신인감독 김연경'은 매주 토요일 오후 8시 30분 MBC에서 방송된다."), '2026-10-11'), [])
+  assert.deepEqual(weeklyFor('신인감독 김연경2', b('신인감독 김연경2', '매주 일요일 오후 9시 10분 MBC 방송'), '2027-01-01'), [])
+  assert.deepEqual(weeklyFor('루키', b('루키 출연진', '루키는 매주 수요일 오후 8시 45분 tvN 방송'), '2026-10-11'), [])
+  // 다른 작품 이야기는 붙이지 않는다
+  assert.deepEqual(weeklyFor('신인감독 김연경2', b('주말 예능 정리', "KBS2 '영화가 좋다'는 매주 토요일 오전 10시 10분 방송된다"), '2026-10-11'), [])
 })

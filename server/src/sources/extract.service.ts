@@ -14,6 +14,7 @@ export interface ExtractedWork {
   platform: Platform
   type: string
   date: string | null
+  time?: string // 'HH:MM' (KST). 기사에 날짜 바로 뒤 시각이 적혀 있을 때만
   dateText: string | null
 }
 
@@ -37,7 +38,7 @@ const addDays = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`)
 const platformsIn = (s: string) => PLATFORM_RE.filter(([, re]) => re.test(s)).map(([p]) => p)
 // 작품명이 아닌 것: 일반 명사, 플랫폼 이름이 든 문구, 3글자 이하 영문 약어(HBO 등)
 const GENERIC = /^(애니|드라마|예능|영화|시리즈|오리지널|신작|작품)$/
-const isTitle = (t: string) => t.length >= 2 && !SPEECH.test(t) && !GENERIC.test(t) && !platformsIn(t).length && !/^[A-Z]{1,3}$/.test(t)
+const isTitle = (t: string) => t.length >= 2 && !SPEECH.test(t) && !GENERIC.test(t) && !platformsIn(t).length && !/^[A-Z]{1,3}$/.test(t) && !/^\d+$/.test(t)
 // "필승 원더독스(이하 원더독스)", "나의 작품(가제)" → 괄호 부분 제거
 const titlesIn = (s: string) => [...s.matchAll(QUOTE)].map((m) => m[1].replace(/\s*\([^)]*\)\s*$/, '').trim()).filter(isTitle)
 const sentences = (t: string) => t.split(/(?<=[.!?])\s+|…|\.{3}/).map((s) => s.trim()).filter(Boolean)
@@ -50,11 +51,34 @@ function typeIn(text: string) {
   return null
 }
 
+// "오후 5시", "밤 10시 50분", "17시". 접두어 없는 12시 이하는 오전·오후를 알 수 없어 버린다
+const TIME = String.raw`\)?\s*(?:\([^)]*\)\s*)?(?:[월화수목금토일]요일\s*)?(?:(오전|오후|낮|저녁|밤|새벽)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분|\s*반)?`
+// OTT 공개 일정만 쓴다. TV 방송 기준 문장(채널 이름, "방송되며 넷플릭스에서도 공개", 플랫폼 없이 "방송")의 날짜는 버리고,
+// 매주 일정은 "MBC 오후 9시 10분 방송 후 공개"로 방송 기준임을 밝혀 쓴다.
+// "티빙 예능 'X'는 11일 첫 방송된다"처럼 OTT만 나오는 "방송"은 OTT 공개
+const CHANNEL = /tvN|JTBC|SBS|KBS|MBC|ENA|MBN|Mnet|EBS|E채널|채널A|TV조선|라이프타임/i
+const tvTime = (s: string) => CHANNEL.test(s) || (/방송|전파/.test(s) && (/공개|OTT|시청|다시보기|VOD|에서도/i.test(s) || !platformsIn(s).length))
+const PM = new Set(['오후', '저녁', '밤'])
+export function toTime(ampm: string | undefined, h: number, min = 0): string | undefined {
+  if (h > 23 || min > 59) return
+  if (!ampm && h <= 12) return
+  if (ampm && h > 12) return ampm === '오전' || ampm === '새벽' ? undefined : `${pad(h)}:${pad(min)}`
+  if (ampm && PM.has(ampm) && h === 12) return ampm === '밤' ? undefined : '12:00' // 밤 12시는 다음 날이라 애매
+  if ((ampm && PM.has(ampm)) || (ampm === '낮' && h < 6)) h += 12
+  return `${pad(h % 24)}:${pad(min)}`
+}
+
 /** 문장 속 날짜 중 기사 날짜 이후(오늘 공개는 당일 포함), 180일 안의 첫 날짜 */
 export function pickDate(s: string, pub: string): string | null {
+  return pickWhen(s, pub)?.date ?? null
+}
+
+/** pickDate + 날짜 바로 뒤에 적힌 공개 시각 */
+export function pickWhen(s: string, pub: string): { date: string; time?: string } | null {
   const [py, pm, pd] = pub.split('-').map(Number)
   const today = /오늘/.test(s)
-  for (const m of s.matchAll(/(?:(\d{4})년\s*)?(?:(\d{1,2})월|(다음\s*달|내달))?\s*(\d{1,2})일(?!간|째|동안)/g)) {
+  const re = new RegExp(String.raw`(?:(\d{4})년\s*)?(?:(\d{1,2})월|(다음\s*달|내달))?\s*(\d{1,2})일(?!간|째|동안)(?:${TIME})?`, 'g')
+  for (const m of s.matchAll(re)) {
     const day = Number(m[4])
     let y = m[1] ? Number(m[1]) : py
     let mon = m[2] ? Number(m[2]) : m[3] ? pm + 1 : pm
@@ -63,7 +87,10 @@ export function pickDate(s: string, pub: string): string | null {
     if (mon > 12) { mon -= 12; y++ }
     const d = `${y}-${pad(mon)}-${pad(day)}`
     if (day < 1 || day > 31 || Number.isNaN(Date.parse(d))) continue
-    if ((d > pub || (today && d === pub)) && d <= addDays(pub, 180)) return d
+    if ((d > pub || (today && d === pub)) && d <= addDays(pub, 180)) {
+      const time = m[6] ? toTime(m[5], Number(m[6]), m[7] ? Number(m[7]) : m[0].endsWith('반') ? 30 : 0) : undefined
+      return time ? { date: d, time } : { date: d }
+    }
   }
   return null
 }
@@ -77,6 +104,72 @@ export function vague(s: string, pub: string): string | null {
   return s.match(/상반기|하반기|연내|[1-4]분기/)?.[0] ?? null
 }
 
+// ---- 정기 공개: "매주 토·일요일 오후 9시 10분", "매주 수요일 2회씩" ----
+// after = TV 방송 채널: "매주 일 오후 9시 10분 MBC 방송 후 공개" (방송이 끝난 뒤 OTT에 올라오는 작품)
+export interface Weekly { days: string; time?: string; per?: number; after?: string }
+export interface ExtractedWeekly extends Weekly { title: string; from: string }
+
+const DAY = String.raw`[월화수목금토일](?=요일|[\s,·ㆍ∙~과와및]|$)(?:요일)?`
+const WEEKLY = new RegExp(String.raw`매주\s*((?:${DAY}(?:\s*(?:[,·ㆍ∙~]|과|와|및)\s*)?)+)(?:\s*(?:(오전|오후|낮|저녁|밤|새벽)\s*)?(\d{1,2})시(?:\s*(\d{1,2})분|\s*반)?)?`)
+
+/** 문장 하나의 "매주 …" OTT 공개 일정. TV 방송 기준 문장이면 "방송 후 공개"로 (방송 시각을 OTT 공개 시각으로 쓰지 않는다) */
+export function weeklyIn(s: string): Weekly | null {
+  const m = s.match(WEEKLY)
+  if (!m) return null
+  const tv = tvTime(s)
+  if (!tv && !/공개|스트리밍|방송/.test(s)) return null // "매주 시청자를 만난다"처럼 어디서인지 모르는 문장
+  const days = m[1].replace(/요일/g, '').replace(/\s*(?:[,·ㆍ∙]|과|와|및)\s*|\s+/g, '·').replace(/\s*~\s*/g, '~').replace(/^·+|·+$/g, '')
+  const time = m[3] ? toTime(m[2], Number(m[3]), m[4] ? Number(m[4]) : m[0].endsWith('반') ? 30 : 0) : undefined
+  const per = Number(s.slice(m.index! + m[0].length).match(/^\s*(\d{1,2})\s*(?:회|편|화)씩/)?.[1]) || undefined
+  return { days, ...(time && { time }), ...(per && { per }), ...(tv && { after: s.match(CHANNEL)?.[0] ?? 'TV' }) }
+}
+
+/** "매주"에 가장 가까운 작품명: 앞쪽("'X'는 매주") 우선, 없으면 뒤쪽("매주 … 공개되는 'X'") */
+export function weeklyTitle(s: string): string | undefined {
+  const at = s.indexOf('매주')
+  // 가장 가까운 따옴표가 작품명이 아니면(대사·"영화가 좋다" 같은 프로그램) 더 먼 작품으로 넘어가지 않는다
+  const near = [...s.matchAll(QUOTE)].map((m) => ({ i: m.index!, t: m[1].replace(/\s*\([^)]*\)\s*$/, '').trim() }))
+  // 뒤쪽 작품은 가까이(40자 안) 있고 사이에 괄호가 닫히지 않을 때만 ("(… 매주 수요일 방송) 〈다른 작품〉" 방지)
+  const after = near.find((x) => x.i > at && x.i - at <= 40 && !s.slice(at, x.i).includes(')'))
+  const t = (near.filter((x) => x.i < at).at(-1) ?? after)?.t
+  return t && isTitle(t) ? t : undefined
+}
+
+/** 기사에서 작품별 정기 공개 일정. 작품명은 같은 문장에 있을 때만 (기사 제목의 다른 작품을 붙이지 않게) */
+const normT = (t: string) => t.replace(/시즌|season/gi, '').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
+
+// 같은 작품: 이름이 같거나 더 긴 이름("닥터X" → "닥터X: 하얀 마피아의 시대"). "신인감독 김연경"(시즌1)은 "신인감독 김연경2"가 아니다
+const sameWork = (q: string, n: string) => q.startsWith(n) || (n.startsWith(q) && !/^\d/.test(n.slice(q.length)))
+
+/** 작품명으로 찾은 뉴스·블로그(최근 60일)에서 그 작품의 정기 공개 일정. 블로그는 작품명을 따옴표로 쓰지 않아 글 제목·문장에 이름이 있으면 그 작품으로 본다 */
+export function weeklyFor(title: string, articles: Article[], today = kstDate(new Date().toISOString())): ExtractedWeekly[] {
+  const n = normT(title), out: ExtractedWeekly[] = []
+  for (const a of articles) {
+    if (kstDate(a.pubDate) < addDays(today, -60)) continue // 지난 시즌·바뀐 편성
+    const inHead = normT(a.title).includes(n)
+    for (const s of sentences(`${a.title}. ${a.description}`)) {
+      const w = weeklyIn(s)
+      if (!w) continue
+      // 따옴표 작품명이 있으면 그것이 이 작품일 때만 (다른 작품 일정 방지)
+      const quoted = [...s.matchAll(QUOTE)].length > 0, q = weeklyTitle(s)
+      const ok = quoted ? !!q && sameWork(normT(q), n) : n.length >= 4 && (normT(s).includes(n) || inHead) // "루키"처럼 짧은 이름은 따옴표 없이 맞추지 않는다
+      if (ok) out.push({ ...w, title, from: kstDate(a.pubDate) })
+    }
+  }
+  return out
+}
+
+export function weekly(articles: Article[]): ExtractedWeekly[] {
+  const out: ExtractedWeekly[] = []
+  for (const a of articles) {
+    for (const s of sentences(`${a.title}. ${a.description}`)) {
+      const w = weeklyIn(s), title = w && weeklyTitle(s)
+      if (w && title) out.push({ ...w, title, from: kstDate(a.pubDate) })
+    }
+  }
+  return out
+}
+
 export function extract(articles: Article[]): ExtractedWork[] {
   const out: ExtractedWork[] = []
   articles.forEach((a, i) => {
@@ -88,17 +181,18 @@ export function extract(articles: Article[]): ExtractedWork[] {
     const articleType = typeIn(a.title) ?? typeIn(all) ?? '드라마'
     const found = new Map<string, ExtractedWork>()
     for (const s of sentences(all)) {
-      if (!RELEASE.test(s) || PAST.test(s)) continue
+      // TV 방송 기사의 날짜는 OTT 공개일과 다를 수 있어 버린다 (JTBC 24일 방송, 디즈니+ 25일 공개)
+      if (!RELEASE.test(s) || PAST.test(s) || tvTime(s)) continue
       const platform = platformsIn(s)[0] ?? (articlePlatforms.length === 1 ? articlePlatforms[0] : undefined)
       const title = titlesIn(s)[0] ?? headTitle
       if (!platform || !title) continue
-      const date = pickDate(s, pub)
+      const { date = null, time } = pickWhen(s, pub) ?? {}
       const dateText = date ? null : vague(s, pub)
       if (!date && !dateText) continue
       const key = `${title}|${platform}`
       if (found.get(key)?.date) continue // 정확한 날짜를 먼저 찾았으면 유지
       // 구분은 그 문장 → 기사 제목 → 기사 전체 순. TMDB에서 찾으면 다시 보정된다
-      found.set(key, { article: i, title, platform, type: typeIn(s) ?? articleType, date, dateText })
+      found.set(key, { article: i, title, platform, type: typeIn(s) ?? articleType, date, time, dateText })
     }
     out.push(...found.values())
   })

@@ -61,7 +61,23 @@ export const dday = (w: Work) => {
   const n = Math.round((parse(w.date).getTime() - TODAY.getTime()) / 864e5)
   return n === 0 ? 'D-DAY' : n > 0 ? `D-${n}` : `D+${-n}`
 }
-export const when = (w: Work) => (w.date ? fmt(w.date) : w.dateText ?? '미정')
+/** '17:00' → '오후 5시', '22:50' → '오후 10시 50분' */
+export const clock = (t?: string) => {
+  if (!t) return ''
+  const [h, m] = t.split(':').map(Number)
+  return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}시${m ? ` ${m}분` : ''}`
+}
+/** OTT 공개 일정: "매주 월 오후 6시 공개" / 방송 뒤 올라오는 작품은 "매주 일 MBC 오후 9시 10분 방송 후 공개" (시각은 방송 시각) */
+export const weeklyLabel = (w: Work) => {
+  const x = w.weekly
+  if (!x) return ''
+  const per = x.per ? ` ${x.per}편씩` : ''
+  return x.after
+    ? [`매주 ${x.days}`, x.after, clock(x.time), `방송 후 공개${per}`].filter(Boolean).join(' ')
+    : [`매주 ${x.days}`, clock(x.time), `공개${per}`].filter(Boolean).join(' ')
+}
+/** 10.15 (목) 오후 5시 */
+export const when = (w: Work) => (w.date ? [fmt(w.date), clock(w.time)].filter(Boolean).join(' ') : w.dateText ?? '미정')
 // 날짜 있는 작품 먼저, "10월 중" 같은 작품은 맨 뒤
 export const byDate = (a: Work, b: Work) => (a.date ?? '9999').localeCompare(b.date ?? '9999')
 
@@ -79,8 +95,8 @@ export const hotWhy = (w: Work, mode: HotMode, platform = '전체') =>
   mode === 'now'
     ? w.rank ?? ''
     : `${platform === '전체' ? platformLabel(w) : platform} ${w.type} 기대작${w.buzz ? ` · 기사 ${w.buzz}건` : ''}` // 플랫폼을 고르면 그 이름으로
-/** 티빙 +1 · 드라마 · 10.14 (수) */
-export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, mode === 'soon' ? when(w) : ''].filter(Boolean).join(' · ')
+/** 티빙 +1 · 드라마 · 10.14 (수) · 매주 수 오후 5시 */
+export const hotMeta = (w: Work, mode: HotMode) => [platformLabel(w), w.type, mode === 'soon' ? when(w) : '', weeklyLabel(w)].filter(Boolean).join(' · ')
 
 export const bg = (url?: string) => (url ? { background: `center/cover no-repeat url("${url}")` } : undefined)
 

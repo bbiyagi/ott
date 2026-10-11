@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, isStale, platformLabel, platformTitle, refreshMsg, refreshing, useHot, useOtt, when } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, isStale, platformLabel, platformTitle, refreshMsg, refreshing, useHot, useOtt, when, clock, weeklyLabel } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vBg } from '../../lib/lazy'
@@ -159,7 +159,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                     <span class="t16">{{ e.title }}</span>
                     <NewsBadge :w="e" plain />
                   </span>
-                  <span class="meta" :title="platformTitle(e)">{{ platformLabel(e) }} · {{ e.type }}</span>
+                  <span class="meta" :title="platformTitle(e)">{{ [platformLabel(e), e.type, clock(e.time)].filter(Boolean).join(' · ') }}</span>
                 </span>
                 <span class="muted" aria-hidden="true">›</span>
               </button>
@@ -193,7 +193,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                   <span class="t15">{{ u.title }}</span>
                   <NewsBadge :w="u" />
                 </span>
-                <span class="meta small" :title="platformTitle(u)">{{ platformLabel(u) }} · {{ u.type }} · {{ when(u) }}</span>
+                <span class="meta small" :title="platformTitle(u)">{{ [platformLabel(u), u.type, when(u), weeklyLabel(u)].filter(Boolean).join(' · ') }}</span>
                 <p v-if="u.overview" class="blurb small">{{ u.overview }}</p>
               </div>
               <div class="up-side">
@@ -216,6 +216,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div class="ph poster" v-bg="v.poster"><span v-if="!v.poster" class="ph-label">poster</span></div>
               <span class="t13">{{ v.title }}</span>
               <span class="meta tiny" :title="platformTitle(v)">{{ platformLabel(v) }}</span>
+              <span v-if="v.weekly" class="meta tiny">{{ weeklyLabel(v) }}</span>
             </button>
           </div>
           <p v-if="!available.length" class="empty">조건에 맞는 작품이 없어요.</p>
