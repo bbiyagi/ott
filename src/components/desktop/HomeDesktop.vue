@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { BRAND } from '../../brand'
 import type { HomeData, Work } from '../../data/mock'
 import { DOW, TODAY, dowCls, longDay, md } from '../../lib/date'
-import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, openAt, weeklyLabel, airLabel } from '../../lib/home'
+import { CATS, NEWS_NOTE, PLATFORMS, bg, dday, hotMeta, hotTag, hotWhy, platformLabel, platformTitle, useHot, useOtt, when, openAt, weeklyLabel } from '../../lib/home'
 import { VIEWS, useCalendar } from '../../lib/calendar'
 import { openDetail } from '../../lib/detail'
 import { vReveal } from '../../lib/reveal'
@@ -72,13 +72,13 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <div class="shade"></div>
             <span :key="`b-${hot[0].id}`" class="hero-badge rise">{{ hotTag(hot[0], hotMode) }}</span>
             <div :key="`i-${hot[0].id}`" class="lead-info col8 rise">
-              <span class="why on-image">{{ hotWhy(hot[0], hotMode, hotPlatform) }}</span>
+              <span v-if="hotMode === 'now'" class="why on-image">{{ hotWhy(hot[0], hotMode, hotPlatform) }}</span>
               <span class="lead-title">{{ hot[0].title }}</span>
-              <p v-if="hot[0].overview" class="blurb on-image">{{ hot[0].overview }}</p>
               <span class="row-chip">
                 <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
                 <NewsBadge :w="hot[0]" on-image />
               </span>
+              <p v-if="hot[0].overview" class="blurb on-image">{{ hot[0].overview }}</p>
             </div>
           </article>
           <ul class="hot-list">
@@ -88,12 +88,12 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <div class="hot-body col4">
                 <span class="tag">{{ hotTag(h, hotMode) }}</span>
                 <span class="hot-title">{{ h.title }}</span>
-                <span class="why">{{ hotWhy(h, hotMode, hotPlatform) }}</span>
-                <p v-if="h.overview" class="blurb">{{ h.overview }}</p>
+                <span v-if="hotMode === 'now'" class="why">{{ hotWhy(h, hotMode, hotPlatform) }}</span>
                 <span class="row-chip">
                   <span class="meta" :title="platformTitle(h)">{{ meta(h) }}</span>
                   <NewsBadge :w="h" />
                 </span>
+                <p v-if="h.overview" class="blurb">{{ h.overview }}</p>
               </div>
             </li>
           </ul>
@@ -106,7 +106,8 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="badge" :class="{ soon: hotMode === 'soon' }">{{ hotTag(h, hotMode) }}</span>
             </div>
             <span class="mtitle">{{ h.title }}</span>
-            <span class="why small">{{ hotWhy(h, hotMode, hotPlatform) }}</span>
+            <span v-if="hotMode === 'now'" class="why small">{{ hotWhy(h, hotMode, hotPlatform) }}</span>
+            <span class="meta small" :title="platformTitle(h)">{{ meta(h) }}</span>
             <p v-if="h.overview" class="blurb small">{{ h.overview }}</p>
           </button>
         </div>
@@ -149,9 +150,10 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <span class="wdow" :class="dowCls(i)">{{ DOW[i] }}</span>
             </div>
             <button v-for="(e, j) in on(d)" :key="j" type="button" class="witem" :title="e.via === 'news' ? NEWS_NOTE : undefined" @click="openDetail(e)">
-              <span class="muted" :title="platformTitle(e)"><span v-if="e.via === 'news'" class="news sm">기사</span>{{ platformLabel(e) }}</span>
+              <!-- 기대작 카드와 같은 순서: 제목 → 플랫폼·구분·시각 → 소개 -->
               <b>{{ e.title }}</b>
-              <span v-if="e.time && !e.after" class="muted">{{ openAt(e) }}</span>
+              <span class="muted" :title="platformTitle(e)"><span v-if="e.via === 'news'" class="news sm">기사</span>{{ [platformLabel(e), e.type, openAt(e), weeklyLabel(e as Work)].filter(Boolean).join(' · ') }}</span>
+              <span v-if="e.overview" class="blurb small">{{ e.overview }}</span>
             </button>
           </div>
         </div>
@@ -182,17 +184,15 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <li v-for="(u, i) in upcoming" :key="u.id" class="card up rise" :style="{ '--i': i }">
                 <button type="button" class="hit" :aria-label="`${u.title} 자세히 보기`" @click="openDetail(u)"></button>
                 <div class="ph" v-bg="u"></div>
+                <!-- 기대작 카드와 같은 모양: D-day → 제목 → 플랫폼·구분·날짜 → 소개 -->
                 <div class="up-body">
+                  <span class="tag">{{ dday(u) }}</span>
+                  <span class="up-title">{{ u.title }}</span>
                   <span class="row-chip">
-                    <span class="up-title">{{ u.title }}</span>
+                    <span class="meta" :title="platformTitle(u)">{{ hotMeta(u, 'soon') }}</span>
                     <NewsBadge :w="u" />
                   </span>
-                  <span class="meta" :title="platformTitle(u)">{{ [platformLabel(u), u.type, when(u), weeklyLabel(u)].filter(Boolean).join(' · ') }}</span>
                   <p v-if="u.overview" class="blurb">{{ u.overview }}</p>
-                </div>
-                <div class="up-side">
-                  <span class="dday">{{ dday(u) }}</span>
-                  <a :href="u.source ?? '#'" target="_blank" rel="noopener" class="src">{{ u.via === 'tmdb' ? 'TMDB' : '기사' }} ↗</a>
                 </div>
               </li>
             </ul>
@@ -209,8 +209,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
               <button v-for="(v, i) in available" :key="v.id" type="button" class="tile rise" :style="{ '--i': i }" @click="openDetail(v)">
                 <div class="ph poster" v-bg="v"></div>
                 <span class="t14 b6">{{ v.title }}</span>
-                <span class="meta small" :title="platformTitle(v)">{{ platformLabel(v) }} · {{ v.type }}</span>
-                <span v-if="v.next || v.date || v.weekly" class="meta small">{{ [airLabel(v), weeklyLabel(v)].filter(Boolean).join(' · ') }}</span>
+                <span class="meta small" :title="platformTitle(v)">{{ hotMeta(v, 'now') }}</span>
                 <p v-if="v.overview" class="blurb small">{{ v.overview }}</p>
               </button>
             </div>
@@ -316,9 +315,6 @@ h3 { font-size: 20px; font-weight: 700; }
 .up > .ph { flex: 0 0 56px; aspect-ratio: 2/3; }
 .up-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .up-title { font-size: 16px; font-weight: 700; }
-.up-side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.up-side .src { padding: 8px 0; }
-.dday { font-size: 18px; font-weight: 800; color: var(--accent); }
 .all { font-size: 13px; color: var(--mute); padding: 8px 0; border: 0; background: none; }
 .all:hover { color: var(--accent); }
 .avail { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 20px 12px; }

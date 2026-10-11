@@ -144,7 +144,7 @@ function nearestTitle(s: string, at: number): string | undefined {
 const normT = (t: string) => t.replace(/시즌|season/gi, '').replace(/[\s\p{P}\p{S}]/gu, '').toLowerCase()
 
 // 같은 작품: 이름이 같거나 더 긴 이름("닥터X" → "닥터X: 하얀 마피아의 시대"). "신인감독 김연경"(시즌1)은 "신인감독 김연경2"가 아니다
-const sameWork = (q: string, n: string) => q.startsWith(n) || (n.startsWith(q) && !/^\d/.test(n.slice(q.length)))
+const sameWork = (q: string, n: string) => q.startsWith(n) || (n.startsWith(q) && !/^\d+$/.test(n.slice(q.length)))
 
 /**
  * 이 문장이 그 작품 이야기인지. 따옴표 작품명이 있으면 at(일정 위치)에 가장 가까운 것이 이 작품일 때만 (다른 작품 일정 방지).

@@ -107,3 +107,11 @@ test('공개일이 7일 지나면 공개됨, 너무 지난 날짜는 무시', as
   await feed('a2', '2026-10-01T00:00:00Z', work('2026-10-01'))
   assert.equal(state.works[0].status, 'released')
 })
+
+test('같은 날 같은 플랫폼의 줄인 이름은 긴 이름 하나로', () => {
+  const w = (title: string, type: string, buzz: number, date = '2026-10-13'): Work => ({ id: title, title, platform: '티빙', type, date, via: 'news', buzz })
+  const g = group([w('라스트 스테이지', '드라마', 2), w('라스트 스테이지 : 24H', '예능', 12), w('신인감독 김연경', '예능', 3), w('신인감독 김연경2', '예능', 5)])
+  assert.deepEqual(g.map((x) => [x.title, x.type, x.buzz]), [['라스트 스테이지 : 24H', '예능', 12], ['신인감독 김연경', '예능', 3], ['신인감독 김연경2', '예능', 5]])
+  // 날짜가 다르면 다른 작품
+  assert.equal(group([w('라스트 스테이지', '드라마', 2, '2026-10-20'), w('라스트 스테이지 : 24H', '예능', 12)]).length, 2)
+})

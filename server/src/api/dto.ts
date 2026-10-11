@@ -27,7 +27,7 @@ export interface Work {
   via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
 }
 
-export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; time?: string; after?: string; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
+export interface CalEvent { id: string; date: string; platform: string; type: string; title: string; time?: string; after?: string; overview?: string; weekly?: Weekly; source?: string; platforms?: string[]; via?: 'news' | 'tmdb'; poster?: string }
 
 /** 상세 창: 줄거리, 출처 기사 목록, TMDB 링크 */
 export interface WorkDetail extends Work { sources: Source[] }

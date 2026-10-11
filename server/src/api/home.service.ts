@@ -44,12 +44,23 @@ const norm = (t: string) => t.replace(/시즌|season/gi, '').replace(/[\s\p{P}\p
 
 /** 같은 작품이 여러 플랫폼에 있으면 하나로 묶고 platforms에 모두 담는다 (화면: "넷플릭스 +2"). 대표는 TMDB 날짜가 있는 쪽 */
 export function group<T extends Work | CalEvent>(list: T[], byDate = false): T[] {
+  // 같은 날 같은 플랫폼에 앞부분이 같은 이름("라스트 스테이지" ⊂ "라스트 스테이지 : 24H")은 같은 작품: 긴 이름으로 묶는다.
+  // 짧은 이름은 TMDB에서 다른 작품이 잡히기 쉬워 정보도 긴 이름 쪽. "김연경"과 "김연경2"(시즌)는 다른 작품
+  const canon = (w: T): string => {
+    const n = norm(w.title)
+    if (!w.date || n.length < 4) return n
+    const long = list.find((x) => x.date === w.date && x.platform === w.platform && norm(x.title).length > n.length && norm(x.title).startsWith(n) && !/^\d+$/.test(norm(x.title).slice(n.length)))
+    return long ? canon(long) : n
+  }
   const map = new Map<string, T>()
   for (const w of list) {
-    const k = norm(w.title) + (byDate ? `|${w.date}` : '')
+    const c = canon(w), k = c + (byDate ? `|${w.date}` : '')
     const g = map.get(k)
+    const platforms = (first: string) => [first, ...(g?.platforms ?? []).filter((p) => p !== first)]
     if (!g) map.set(k, { ...w, platforms: [w.platform] })
-    else if (g.via === 'news' && w.via === 'tmdb') map.set(k, { ...w, platforms: [w.platform, ...g.platforms!.filter((p) => p !== w.platform)] })
+    else if (norm(g.title) !== c && norm(w.title) === c) map.set(k, { ...w, platforms: platforms(w.platform), ...('buzz' in w && { buzz: Math.max(w.buzz ?? 0, (g as Work).buzz ?? 0) }) })
+    else if (norm(w.title) !== c) { if ('buzz' in g) (g as Work).buzz = Math.max((g as Work).buzz ?? 0, (w as Work).buzz ?? 0) } // 짧은 이름 쪽은 버린다
+    else if (g.via === 'news' && w.via === 'tmdb') map.set(k, { ...w, platforms: platforms(w.platform) })
     else if (!g.platforms!.includes(w.platform)) g.platforms!.push(w.platform)
   }
   return [...map.values()]
@@ -59,7 +70,7 @@ export function group<T extends Work | CalEvent>(list: T[], byDate = false): T[]
 function weeklyOf(s: Store, w: Work) {
   if (w.type === '영화' || !s.weekly) return undefined
   const t = norm(w.title), since = addDays(today(), -60) // 두 달 넘은 글의 편성은 바뀌었을 수 있다
-  const k = s.weekly[t] ? t : Object.keys(s.weekly).filter((k) => k.length >= 3 && t.startsWith(k) && !/^\d/.test(t.slice(k.length))).sort((a, b) => b.length - a.length)[0]
+  const k = s.weekly[t] ? t : Object.keys(s.weekly).filter((k) => k.length >= 3 && t.startsWith(k) && !/^\d+$/.test(t.slice(k.length))).sort((a, b) => b.length - a.length)[0]
   return k && s.weekly[k].from >= since ? s.weekly[k] : undefined
 }
 
@@ -114,7 +125,7 @@ export class HomeService {
       .sort((a, b) => Number(!!b.ko) - Number(!!a.ko) || Number(b.type === '드라마') - Number(a.type === '드라마') || (b.pop ?? 0) - (a.pop ?? 0))
     const now = interleave(picks).slice(0, 40).map(out)
 
-    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, time: w.time, after: w.after, source: w.source, via: w.via, poster: w.poster })
+    const ev = (w: Work): CalEvent => ({ id: w.id, date: w.date!, platform: w.platform, type: w.type, title: w.title, time: w.time, after: w.after, overview: w.overview, weekly: w.weekly, source: w.source, via: w.via, poster: w.poster })
     const events = group([...works.map(out), ...tn, ...s.theater.soon.map(out)].filter((w) => w.date).map(ev), true)
 
     return {
