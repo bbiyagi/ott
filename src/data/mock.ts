@@ -16,7 +16,7 @@ export interface Work {
   backdrop?: string // 가로 스틸 (큰 배너)
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // news = 기사에서 모은 날짜라 정확하지 않을 수 있음
-  overview?: string // 상세 창에서만
+  overview?: string // 줄거리. 카드에는 두 줄까지
   tmdbUrl?: string
 }
 

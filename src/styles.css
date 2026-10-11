@@ -109,6 +109,11 @@ a.news:hover { color: var(--accent); border-color: var(--accent); }
 .more-btn { min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--sub); font-size: 14px; font-weight: 600; }
 .more-btn:hover { color: var(--accent); border-color: var(--accent); }
 
+/* 카드의 짧은 소개: 줄거리 두 줄까지 */
+.blurb { margin: 0; font-size: 13px; line-height: 1.5; color: var(--mute); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.blurb.on-image { color: var(--sub); max-width: 560px; }
+.blurb.small { font-size: 12px; }
+
 /* 기대작·인기 이유: "티빙 드라마 기대작 · 기사 9건" */
 .why { font-size: 13px; font-weight: 600; color: var(--sub); }
 

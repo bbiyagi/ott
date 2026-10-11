@@ -45,6 +45,7 @@ export class HomeService {
     const out = (w: Work | StoredWork): Work => ({
       id: w.id, title: w.title, platform: w.platform, type: w.type, date: w.date, dateText: w.dateText,
       genre: w.genre, poster: w.poster, backdrop: w.backdrop, rank: w.rank, longRun: w.longRun,
+      overview: w.overview, // 카드에 두 줄 소개로 보인다
       ...('sources' in w
         ? {
             source: (w.sources.filter((x) => x.title !== 'TMDB').at(-1) ?? w.sources.at(-1))?.link,

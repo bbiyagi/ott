@@ -72,6 +72,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <div :key="`i-${hot[0].id}`" class="lead-info rise">
               <span class="why on-image">{{ hotWhy(hot[0], hotMode) }}</span>
               <span class="lead-title">{{ hot[0].title }}</span>
+              <p v-if="hot[0].overview" class="blurb on-image">{{ hot[0].overview }}</p>
               <span class="row-chip">
                 <span class="lead-meta" :title="platformTitle(hot[0])">{{ meta(hot[0]) }}</span>
                 <NewsBadge :w="hot[0]" on-image />
@@ -86,6 +87,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                 <span class="tag">{{ hotTag(h, hotMode) }}</span>
                 <span class="hot-title">{{ h.title }}</span>
                 <span class="why small">{{ hotWhy(h, hotMode) }}</span>
+                <p v-if="h.overview" class="blurb small">{{ h.overview }}</p>
                 <span class="row-chip">
                   <span class="meta small" :title="platformTitle(h)">{{ meta(h) }}</span>
                   <NewsBadge :w="h" />
@@ -185,6 +187,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
                   <NewsBadge :w="u" />
                 </span>
                 <span class="meta small" :title="platformTitle(u)">{{ platformLabel(u) }} · {{ u.type }} · {{ when(u) }}</span>
+                <p v-if="u.overview" class="blurb small">{{ u.overview }}</p>
               </div>
               <div class="up-side">
                 <span class="dday">{{ dday(u) }}</span>
@@ -223,6 +226,7 @@ const movies = computed(() => props.data.theater[theaterTab.value])
             <div class="col2">
               <span class="t15">{{ mv.title }}</span>
               <span class="meta small">{{ mv.genre }} · {{ mv.date ? md(mv.date) : when(mv) }} 개봉</span>
+              <p v-if="mv.overview" class="blurb small">{{ mv.overview }}</p>
             </div>
           </button>
         </div>

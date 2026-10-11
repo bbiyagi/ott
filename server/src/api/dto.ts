@@ -13,7 +13,7 @@ export interface Work {
   poster?: string // 세로 포스터 (w500)
   backdrop?: string // 가로 스틸 (w1280), 큰 배너용
   longRun?: boolean // 시즌당 20회 넘는 장수 프로그램 (메인에서 뺀다)
-  overview?: string // 줄거리 (상세 창에서만 보낸다)
+  overview?: string // 줄거리 (TMDB). 카드에는 두 줄까지
   tmdbUrl?: string
   platforms?: string[] // 같은 작품이 여러 플랫폼에 있으면 전부 (첫 번째 = platform)
   via?: 'news' | 'tmdb' // 공개일을 어디서 가져왔는지. news는 기사 기준이라 정확하지 않을 수 있다
