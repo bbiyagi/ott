@@ -318,7 +318,8 @@ h1 { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1.2; 
 .movies .tile { gap: 10px; }
 
 .foot { padding-top: 20px; border-top: 1px solid var(--line-soft); font-size: 12px; line-height: 1.6; color: var(--mute); }
-.tabs { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg); border-top: 1px solid var(--line-soft); }
+/* 카드 클릭 버튼(.hit 1)·기사 링크(2)보다 위. 헤더(5)와 같은 원리 */
+.tabs { position: sticky; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--bg); border-top: 1px solid var(--line-soft); }
 .tabs button { min-height: 56px; border: 0; background: transparent; font-size: 14px; font-weight: 500; color: var(--mute); transition: color 0.2s var(--ease), box-shadow 0.25s var(--ease); }
 .tabs button[aria-current='page'] { color: var(--text); font-weight: 700; box-shadow: inset 0 2px 0 var(--accent); }
 </style>
